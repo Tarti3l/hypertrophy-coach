@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Hypertrophy Coach",
+    "slug": "hypertrophy-coach",
+    "scheme": "hypertrophycoach",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "name": "Hypertrophy Coach",
+      "shortName": "Hypertrophy"
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.hypertrophycoach"
+    },
+    "android": {
+      "package": "com.example.hypertrophycoach",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video"
+    ]
+  }
+}

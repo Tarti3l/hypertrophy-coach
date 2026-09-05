@@ -1,0 +1,52 @@
+{
+  "$schema": "./manifest.schema.json",
+  "version": 1,
+  "delivery": {
+    "provider": "cloudflare-r2",
+    "publicBaseUrl": "https://media.example.com",
+    "cacheControl": "public, max-age=31536000, immutable"
+  },
+  "assetContract": {
+    "video": {
+      "extension": "mp4",
+      "codec": "h264",
+      "audio": false,
+      "durationSeconds": { "min": 3, "max": 5 },
+      "width": 720,
+      "height": 960,
+      "maxBytes": 900000
+    },
+    "poster": {
+      "extension": "webp",
+      "width": 720,
+      "height": 960,
+      "maxBytes": 120000
+    }
+  },
+  "exercises": [
+    { "priority": 1, "slug": "incline-dumbbell-press", "name": "Press inclinado con mancuernas", "group": "pecho" },
+    { "priority": 2, "slug": "cable-fly", "name": "Aperturas en polea (cruces)", "group": "pecho" },
+    { "priority": 3, "slug": "pec-deck", "name": "Apertura en máquina (pec deck)", "group": "pecho" },
+    { "priority": 4, "slug": "barbell-bench-press", "name": "Press de banca con barra", "group": "pecho" },
+    { "priority": 5, "slug": "dumbbell-lateral-raise", "name": "Elevación lateral con mancuernas", "group": "hombros" },
+    { "priority": 6, "slug": "front-raise", "name": "Elevación frontal", "group": "hombros" },
+    { "priority": 7, "slug": "reverse-pec-deck", "name": "Pájaro en máquina (deltoides posterior)", "group": "hombros" },
+    { "priority": 8, "slug": "overhead-press", "name": "Press militar de pie", "group": "hombros" },
+    { "priority": 9, "slug": "lat-pulldown", "name": "Jalón al pecho", "group": "espalda" },
+    { "priority": 10, "slug": "chest-supported-row", "name": "Remo con apoyo de pecho", "group": "espalda" },
+    { "priority": 11, "slug": "one-arm-dumbbell-row", "name": "Remo con mancuerna a una mano", "group": "espalda" },
+    { "priority": 12, "slug": "leg-press", "name": "Prensa de piernas 45°", "group": "cuadriceps" },
+    { "priority": 13, "slug": "leg-extension", "name": "Extensión de rodilla", "group": "cuadriceps" },
+    { "priority": 14, "slug": "hack-squat", "name": "Sentadilla hack", "group": "cuadriceps" },
+    { "priority": 15, "slug": "seated-leg-curl", "name": "Curl femoral sentado", "group": "femorales" },
+    { "priority": 16, "slug": "dumbbell-rdl", "name": "Peso muerto rumano con mancuernas", "group": "femorales" },
+    { "priority": 17, "slug": "hip-thrust", "name": "Hip thrust con barra", "group": "gluteos" },
+    { "priority": 18, "slug": "overhead-triceps-extension", "name": "Extensión de tríceps por encima de la cabeza", "group": "triceps" },
+    { "priority": 19, "slug": "rope-pushdown", "name": "Extensión de tríceps con cuerda", "group": "triceps" },
+    { "priority": 20, "slug": "preacher-curl", "name": "Curl predicador", "group": "biceps" },
+    { "priority": 21, "slug": "hammer-curl", "name": "Curl martillo", "group": "biceps" },
+    { "priority": 22, "slug": "cable-crunch", "name": "Crunch en polea", "group": "abs" },
+    { "priority": 23, "slug": "plank", "name": "Plancha frontal", "group": "abs" },
+    { "priority": 24, "slug": "standing-calf-raise", "name": "Elevación de talón de pie", "group": "pantorrilla" }
+  ]
+}

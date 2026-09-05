@@ -1,0 +1,18 @@
+node_modules/
+.expo/
+.pnpm-store/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+
+# Material bruto y recursos listos para subir al CDN: se validan localmente, no se versionan.
+media/exercise-media/staged/
+
+# Documentos fuente: pesados y de acceso publico, el enlace vive en docs/nutrition-data.md
+docs/fuentes/
+
+# macOS
+.DS_Store

@@ -1,0 +1,16 @@
+{
+  "name": "hypertrophy-coach",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "pnpm --filter @hypertrophy/mobile start",
+    "typecheck": "pnpm --filter @hypertrophy/mobile typecheck",
+    "db:push": "npx supabase db push",
+    "db:status": "npx supabase migration list",
+    "media:check": "node scripts/check-exercise-media.mjs"
+  }
+}

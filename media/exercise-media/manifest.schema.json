@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Exercise media manifest",
+  "type": "object",
+  "required": ["version", "delivery", "assetContract", "exercises"],
+  "properties": {
+    "version": { "const": 1 },
+    "delivery": {
+      "type": "object",
+      "required": ["provider", "publicBaseUrl", "cacheControl"],
+      "properties": {
+        "provider": { "const": "cloudflare-r2" },
+        "publicBaseUrl": { "type": "string", "format": "uri" },
+        "cacheControl": { "const": "public, max-age=31536000, immutable" }
+      }
+    },
+    "assetContract": {
+      "type": "object",
+      "required": ["video", "poster"]
+    },
+    "exercises": {
+      "type": "array",
+      "minItems": 24,
+      "items": {
+        "type": "object",
+        "required": ["priority", "slug", "name", "group"],
+        "properties": {
+          "priority": { "type": "integer", "minimum": 1 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "group": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

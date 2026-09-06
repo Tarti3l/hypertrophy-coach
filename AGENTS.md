@@ -3,6 +3,9 @@
 Reglas para cualquier agente que trabaje en este repo (Claude Code, Codex).
 Leelas antes de tocar código.
 
+`CLAUDE.md` en la raíz solo importa este archivo: son las mismas reglas para
+todos los agentes, escritas en un solo lugar. No las dupliques.
+
 ## Qué es este producto
 
 App móvil para socios de un gimnasio que empiezan a entrenar desde cero.
@@ -42,7 +45,50 @@ de usar.** El usuario la abre entre series, con una mano, y no lee instrucciones
    Los cálculos de macros son estimaciones educativas, nunca consejo médico ni
    diagnóstico.
 
-7. **Trabajá en una branch**, nunca directo sobre `main`.
+7. **Trabajá en una branch**, nunca directo sobre `main`. Un hook local rechaza
+   los commits sobre `main`.
+
+8. **Leé `docs/estado.md` antes de empezar y actualizalo al terminar.**
+   `docs/plan.md` dice qué hay que hacer; `docs/estado.md` dice qué está hecho,
+   qué está en curso y quién lo tomó. Al cerrar un item, actualizá su fila en el
+   mismo commit que el trabajo, y anotá en "Hallazgos que cambian el plan"
+   cualquier cosa que hayas descubierto que contradiga lo planificado.
+
+9. **Un item por vez, y avisá cuál tomaste.** Si otro agente ya tiene un item
+   `en curso` en `docs/estado.md`, no lo agarres en paralelo.
+
+## Trabajo en paralelo
+
+Dos agentes editando el mismo árbol se pisan. Para trabajar en paralelo, cada uno
+va en su propio **git worktree**: misma historia, copia distinta de los archivos,
+rama propia.
+
+```bash
+starcil worktree create --branch item-8-atajos --base main --label "item 8" --no-focus
+```
+
+Reglas:
+
+1. **Un item por worktree, un agente por worktree.** Nunca dos agentes en el
+   mismo árbol.
+2. **Solo se paralelizan items sin dependencia entre sí.** Mirá "Depende de" en
+   `docs/plan.md`. Si uno depende del otro, van en orden, no en paralelo.
+3. **Un módulo por agente.** `features/training/`, `features/nutrition/` y
+   `features/recovery/` se reparten limpio. `apps/mobile/app/` es la superficie
+   compartida: si tu item necesita tocar un archivo de rutas que otro item
+   también toca, decilo en `docs/estado.md` antes de empezar y resolvelo con el
+   dueño en vez de editar los dos.
+4. **Cada worktree necesita su propio `pnpm install`.** No comparten
+   `node_modules`. La primera corrida en un worktree nuevo tarda.
+5. **`pnpm typecheck` pasa en tu worktree antes de abrir el PR**, no después de
+   mergear.
+6. **El que llega segundo rebasea.** Antes de abrir el PR, traé `main` y
+   resolvé los conflictos vos, no en el merge.
+7. **En `docs/estado.md` tocá solo la fila de tu item.** Si editás filas ajenas,
+   generás conflictos donde no los había.
+
+Cuando el item está mergeado, el worktree se cierra:
+`starcil worktree remove --workspace <id>`.
 
 ## Estado del proyecto
 

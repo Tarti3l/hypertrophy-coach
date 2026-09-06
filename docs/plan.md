@@ -158,87 +158,78 @@ sobreviven solo como verificación en el [11].
 
 ### [6] Convierte la ruta inicial en «Hoy»
 
-- **Objetivo:** reunir la siguiente acción de entrenamiento, el consumo
-  nutricional real y el último dato de descanso en la pantalla inicial.
-- **Por qué ahora:** las fuentes y los estados de error ya deben ser confiables
-  antes de reunirlos.
+- **Objetivo:** reunir la acción de entrenamiento, el consumo nutricional real y el
+  último dato de descanso en la pantalla inicial.
 - **Toca:** `apps/mobile/app/`, `features/training/`, `features/progress/`,
   `features/nutrition/`, `features/recovery/`.
-- **No toca:** nuevas rutas, un cuarto apartado, un módulo nuevo ni reglas de
-  cálculo.
+- **No toca:** nuevas rutas, un cuarto apartado, una tarjeta de peso corporal ni
+  reglas nuevas de cálculo.
 - **Criterio de aceptación:** `pnpm typecheck` pasa; un socio identifica sin ayuda
-  cómo empezar o continuar su entrenamiento y consulta alimentación y descanso en
-  la misma pantalla; tras recargar una sesión activa, la acción permite
-  continuarla; datos ausentes, antiguos e indisponibles se distinguen; no se
-  agregan pantallas.
-- **Depende de:** [3], [4], [5].
-- **Esfuerzo:** M — toca cinco módulos. Es el item más grande del plan; si se
-  vuelve inmanejable, partirlo por apartado.
-- **Riesgo:** duplicar estado o mostrar una acción incompatible con la sesión
-  recuperada.
+  cómo empezar o continuar; sin historial llega al tratamiento del [13]; sin
+  conexión puede usar una rutina disponible y continuar una sesión guardada; una
+  sesión finalizada pendiente de envío no aparece como entrenamiento sin terminar;
+  alimentación y descanso distinguen datos actuales, antiguos e indisponibles; no
+  se agregan pantallas.
+- **Depende de:** [15], [19]; [4] y [5], completados.
+- **Esfuerzo:** M — cinco módulos. Si se vuelve inmanejable, partirlo por apartado.
+- **Riesgo:** confundir estado de sincronización con estado del entrenamiento, o
+  duplicar las fuentes de datos.
 
 ### [7] Prioriza elegir una rutina existente
 
 - **Objetivo:** usar la selección de un programa armado como entrada al
   entrenamiento.
-- **Por qué ahora:** evita exigirle al principiante construir una rutina, y se
-  integra con la entrada de «Hoy».
 - **Toca:** `apps/mobile/app/`, `features/training/`.
-- **No toca:** capacidades del constructor, editor, rutinas compartidas ni
-  creación de programas.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; con una rutina existente
-  aprobada para principiantes, un socio la elige y empieza sin abrir el
-  constructor; crear o editar queda como acceso secundario en la pantalla
-  existente, sin otra pantalla ni modo avanzado.
-- **Depende de:** [6], y confirmación de qué rutinas disponibles son aptas para
+- **No toca:** capacidades del constructor, editor, rutinas compartidas ni creación
+  de programas.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; con una rutina existente apta
+  para principiantes, un socio la elige y empieza sin abrir el constructor; crear o
+  editar queda como acceso secundario, sin otra pantalla ni modo avanzado.
+- **Depende de:** [6], y confirmación de qué rutinas cargadas son aptas para
   principiantes.
 - **Esfuerzo:** S.
-- **Riesgo:** dificultarle a los usuarios actuales el acceso al constructor, o
-  presentar programas no aprobados.
+- **Riesgo:** dificultar el acceso al constructor a usuarios actuales, o presentar
+  programas no aprobados.
 
-### [8] Prellena la siguiente serie y permite confirmarla
+### [8] Prellena la siguiente serie respetando el esquema del [12]
 
-- **Objetivo:** revisar peso y repeticiones y confirmar una serie con un toque
-  cuando no haya cambios.
-- **Por qué ahora:** el estado de la sesión ya se conserva y puede sostener un
-  registro mínimo.
+- **Objetivo:** confirmar una serie con un toque cuando sus valores ya son
+  adecuados, conservando el tratamiento explícito de primera vez.
 - **Toca:** `features/progress/`, `features/training/`, `apps/mobile/app/`.
-- **No toca:** implementación del timer existente, RPC de guardado, gráficos,
-  rachas ni algoritmo de progresión.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; un socio confirma con un
-  toque una serie prellenada y puede editarla antes; el valor anterior corresponde
-  al mismo ejercicio y variante; sin historial no aparece un peso inventado; dos
-  toques rápidos no duplican la serie; recargar conserva lo confirmado y el
-  descanso sigue arrancando automáticamente.
-- **Depende de:** [3], [7].
+- **No toca:** la estructura acordada en el [12], la lógica del timer, el RPC ni
+  reglas nuevas de progresión.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; con historial del mismo
+  ejercicio y variante, un socio revisa y confirma con un toque; puede editar antes
+  de guardar; el rango objetivo y las repeticiones realizadas se distinguen; sin
+  historial se aplica el [13]; dos toques rápidos no duplican la serie y el
+  descanso sigue iniciándose automáticamente.
+- **Depende de:** [7], [12], [13], [15], [19].
 - **Esfuerzo:** S.
-- **Riesgo:** usar valores de otra variante, guardar antes de confirmar, o
-  interferir con el timer que ya funciona.
+- **Riesgo:** guardar el rango objetivo como resultado realizado, o reutilizar datos
+  incompatibles con el esquema nuevo.
 
-### [9] Presenta la recomendación de la próxima serie
+### [9] Muestra la próxima serie durante el descanso
 
-- **Objetivo:** mostrar peso y repeticiones sugeridos usando únicamente las reglas
-  de progresión confirmadas.
-- **Por qué ahora:** con persistencia y registro resueltos, se puede abordar la
-  decisión de qué hacer en la siguiente serie.
-- **Toca:** `docs/progression.md`, `features/training/`, `features/progress/`.
-- **No toca:** `services/progression.ts` — las reglas no se cambian. Tampoco
-  algoritmos nuevos, mesociclos, cambios de rutina ni ajustes por sueño.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; se verifican a mano los casos
-  de historial suficiente, insuficiente y cambio de variante contra las reglas
-  documentadas; un socio distingue sugerencia de registro anterior, puede
-  modificar la propuesta y confirmarla en la misma pantalla; sin respaldo
-  suficiente no se presenta el último registro como recomendación.
+- **Objetivo:** usar la superficie del timer para comunicar el ejercicio, la carga
+  de referencia o sugerida y el objetivo de repeticiones siguiente.
+- **Por qué:** entre serie y serie el socio ya está mirando la pantalla esperando el
+  timer. Es la única atención disponible de toda la sesión y hoy está vacía.
+- **Toca:** `features/training/`, `features/progress/`, `docs/progression.md`.
+- **No toca:** avisos aparte, pantallas nuevas, duración del descanso, consejos
+  rotativos ni algoritmos de progresión no confirmados.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; durante el descanso, un socio
+  identifica sin ayuda qué serie sigue y su objetivo sin abandonar el timer; la
+  carga distingue «Referencia anterior» de «Sugerida»; sin historial aparece el
+  tratamiento del [13]; tras la última serie se muestra el siguiente ejercicio o la
+  finalización, nunca una serie inexistente.
 - **Depende de:** [8].
 - **Esfuerzo:** S.
-- **Riesgo:** recomendar una carga sin respaldo, o confundir una propuesta con una
-  serie realizada.
+- **Riesgo:** mostrar objetivos de otra serie, o presentar una referencia como
+  recomendación calculada.
 
 ### [10] Muestra un único resumen de descanso
 
 - **Objetivo:** presentar las horas de sueño registradas como dato principal.
-- **Por qué ahora:** hace consultable el apartado aprovechando los estados de
-  desconexión ya corregidos.
 - **Toca:** `features/recovery/`, `apps/mobile/app/`.
 - **No toca:** modelo de sueño, contenido educativo, sensores, deuda de sueño ni
   prescripciones de entrenamiento.
@@ -248,119 +239,211 @@ sobreviven solo como verificación en el [11].
   conexión, no reemplaza el último dato conocido por cero.
 - **Depende de:** [5], [6].
 - **Esfuerzo:** S.
-- **Riesgo:** interpretar las horas como diagnóstico de recuperación, o mostrar
-  una noche antigua como actual.
+- **Riesgo:** interpretar las horas como diagnóstico de recuperación, o mostrar una
+  noche antigua como actual.
 
-### [11] Verifica el recorrido completo y documenta las capacidades existentes
+### [11] Verifica el recorrido integrado en web y en iPhone
 
-- **Objetivo:** comprobar en conjunto las correcciones y dejar evidencia de las
-  funciones que ya estaban implementadas.
-- **Por qué ahora:** cierra la adaptación sin reconstruir el timer ni los atajos
-  de comida.
+- **Objetivo:** confirmar que las capacidades nuevas funcionan juntas y mantienen
+  los arreglos ya comprobados.
 - **Toca:** `docs/`.
-- **No toca:** la implementación del antiguo [6] ni del antiguo [8], retirados como
-  trabajo de desarrollo; tampoco agrega tests, test runner, CI ni funcionalidades
-  offline.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; se documenta una ejecución
-  manual donde un socio elige una rutina, confirma dos series, ve iniciar el
-  descanso automáticamente, recarga y continúa sin pérdida ni duplicación;
-  registra una comida habitual en dos toques y ve consumos reales; consulta
-  descanso; y se reproducen los casos offline del [5] sin pantalla en blanco ni
-  ceros falsos. Se identifica plataforma y entorno, manteniendo nativo como no
-  verificado.
-- **Depende de:** [4], [5], [7], [8], [10]; también [9] si quedó desbloqueado.
+- **No toca:** incorporación de test runner, recreación del CI del [T2],
+  infraestructura ni funcionalidades nuevas.
+- **Criterio de aceptación:** `pnpm typecheck` y el CI pasan; en Expo Web y en un
+  iPhone con Expo Go, un socio inicia un ejercicio sin historial, completa una
+  sesión preparada en modo avión, consulta la próxima serie durante el descanso,
+  cierra y reabre sin pérdidas y sincroniza una sola vez al recuperar conexión;
+  registra un alimento oficial y una porción medida cuando esté disponible,
+  comprueba sus totales y registra peso sin alterar metas. Se documentan resultados
+  por plataforma y todo item aún bloqueado queda explícitamente pendiente.
+- **Depende de:** [6]–[10], [15], [16], [18], [19]; y [17] cuando existan las
+  mediciones.
 - **Esfuerzo:** S.
-- **Riesgo:** extrapolar resultados de Expo Web a nativo, o dar por corregido un
-  fallo solo porque quedó documentado.
+- **Riesgo:** dar por validado todo el modo offline a partir del arreglo de
+  persistencia, o declarar completo un recorrido con dependencias pendientes.
 
-### [12] Ajusta el rango de series efectivas y el aviso de subir peso
+### [12] Ajusta el rango de series efectivas y el aviso de subir peso — HECHO
 
-Agregado directamente por el dueño del repo, fuera del plan de GPT-6 y de la
-numeración `[1]`–`[11]`. Se numera como continuación del plan de producto,
-distinto de los items técnicos `T` (que son deuda operativa, no de producto).
+Rango fijo 8-12, tres series efectivas por ejercicio, y el aviso de dificultad una
+sola vez por ejercicio. Migraciones 00021 y 00022. Ver `docs/progression.md` y
+`docs/rutinas.md` §1.1.
 
-- **Objetivo:** bajar de 5 a 4 series por ejercicio (1 de calentamiento + 3
-  efectivas al fallo; hoy son 4 efectivas) y que el aviso de "¿te costó / sube
-  el peso?" aparezca una sola vez por ejercicio —al cerrar la primera serie
-  efectiva, no en la segunda ni la tercera— con un texto que explique el
-  rango efectivo de 8 a 12 repeticiones en vez de solo preguntar.
-- **Por qué ahora:** pedido directo del dueño del repo.
-- **Toca:** `features/progress/components/SetTracker.tsx` (frecuencia y texto
-  del aviso), el conteo de series por ejercicio en los datos de rutinas
-  (`routine_exercises.target_sets` y donde corresponda —
-  `split_template_slots`, `shared_routine_exercises`—, ver hallazgo abajo),
-  `docs/progression.md`, `docs/`.
-- **No toca:** `services/progression.ts` (la regla 2-por-2 entre sesiones no
-  se toca sin una decisión aparte — ver hallazgo), el timer de descanso, el
-  toggle de calentamiento.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; en una sesión de
-  ejemplo, cada ejercicio con rutina muestra 1 calentamiento + 3 series
-  efectivas (4 en total); el aviso de dificultad aparece únicamente al
-  completar la **primera** serie efectiva de cada ejercicio, nunca en la
-  segunda ni la tercera; el texto explica el rango 8–12, qué hacer si llegó a
-  12 sin que le costara (subir peso), que la serie 8 ya debería costarle
-  bastante, y que 8 es el mínimo por debajo del cual el peso está muy alto.
-- **Depende de:** una decisión pendiente sobre cómo conviven el rango 8–12
-  en sesión y la regla 2-por-2 entre sesiones (`target_reps`) cuando una
-  rutina fija un objetivo de repeticiones fuera de ese rango — ver
-  "Hallazgos que cambian el plan" en `docs/estado.md`. **No se implementa
-  código hasta resolver esa pregunta.**
+### [19] Parte la pantalla de entrenamiento en dos modos
+
+**Va primero de la fila.** Reestructura `ActiveWorkoutScreen`, que es la pantalla
+que después tocan el [13], el [8] y el [9]. Hacerlo después obliga a rehacerlos.
+
+- **Objetivo:** dejar de mostrar todo a la vez durante el entrenamiento, y resolver
+  la decisión de por dónde empezar.
+- **Por qué ahora:** hoy conviven en una sola pantalla la lista de grupos, los
+  ejercicios del grupo abierto, el video, una línea con cinco metadatos y el
+  registro de series. Para alguien que nunca entrenó es un muro.
+- **Toca:** `features/training/screens/ActiveWorkoutScreen.tsx`,
+  `features/training/components/`, `features/training/screens/RoutineBuilderScreen.tsx`.
+- **No toca:** el registro de series en sí, el timer, el aviso del [12], la lógica
+  de progresión ni el modelo de datos.
+- **Alcance:**
+  - *Modo lista* — al entrar y al terminar cada ejercicio. Los músculos del día
+    ordenados de grande a chico; el primero con la marca «Empezá por acá» y una sola
+    línea de explicación (los grandes primero, mientras hay fuerza). Es
+    recomendación, no obligación. Cada tarjeta muestra el músculo y su avance. Al
+    tocarla se despliegan sus ejercicios, como hoy.
+  - *Modo ejercicio* — al tocar un ejercicio, sin botón intermedio: el toque es el
+    inicio. Solo el ejercicio actual y su registro de series; la lista no se ve. Una
+    vuelta clara a la lista, siempre visible. Al completar todas las series se
+    vuelve solo al modo lista, con el siguiente recomendado marcado.
+  - El video deja de estar siempre presente: pasa a un botón discreto
+    «¿Cómo se hace?» dentro del modo ejercicio.
+  - Se elimina la línea de metadatos del ejercicio (equipo, grupo, región,
+    compuesto, dificultad). Se conserva el equipo solo si sirve para encontrar la
+    máquina en el gimnasio.
+  - En `RoutineBuilderScreen`, paso 5, se quita el `placeholder="Mi rutina"` del
+    campo de nombre: queda vacío.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; en modo ejercicio no se ve nada
+  que no sea el ejercicio actual y sus series; un socio identifica sin ayuda por qué
+  músculo empezar y llega a registrar su primera serie sin leer instrucciones; el
+  timer, el aviso del [12] y la navegación entre ejercicios siguen funcionando; el
+  campo de nombre de rutina aparece vacío.
+- **Depende de:** [12], completado.
+- **Esfuerzo:** M.
+- **Riesgo:** romper el borrador de sesión activa del [3] al cambiar de modo, o
+  perder el acceso a un ejercicio que antes se alcanzaba desde la lista.
+
+### [13] Resuelve la primera sesión de cada ejercicio sin historial
+
+- **Objetivo:** dar una acción clara al principiante cuando todavía no existe un
+  peso de referencia.
+- **Por qué:** es el punto de abandono más probable de toda la app. Sin historial la
+  progresión no puede sugerir nada, y la pregunta «¿cuánto peso pongo?» queda sin
+  respuesta.
+- **Toca:** `features/training/`, `features/progress/`, `docs/progression.md`.
+- **No toca:** pesos iniciales universales, pruebas de carga máxima, pantallas
+  nuevas ni incrementos automáticos.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; sin historial del mismo
+  ejercicio y variante, un socio encuentra en la pantalla de la serie la indicación
+  de empezar con carga liviana para aprender el movimiento, introduce la carga
+  utilizada y confirma; no aparece una recomendación numérica inventada; en la
+  sesión siguiente se recupera esa referencia para revisarla, sin aumentarla
+  automáticamente por haber completado la primera.
+- **Depende de:** [19]; [12] y [3], completados.
 - **Esfuerzo:** S.
-- **Riesgo:** dar dos señales contradictorias sobre cuándo subir peso (el
-  chequeo en sesión y la sugerencia de progresión entre sesiones), o cambiar
-  el conteo de series de rutinas ya guardadas de forma que se pierda de
-  vista qué series ya se habían hecho.
+- **Riesgo:** confundir una carga exploratoria con una validada, o tomar como
+  equivalente el historial de otra variante.
 
-### Items técnicos (T)
+### [14] Permite iniciar, continuar y finalizar una sesión sin conexión
 
-Deuda operativa que el dueño del repo agregó directamente, fuera de la
-numeración de GPT-6: no salen del recorrido del producto, sino de fricción
-real ejecutando el plan. Se numeran con prefijo `T` para no interferir con
-la secuencia [1]–[11].
+- **Objetivo:** completar localmente un entrenamiento con una rutina previamente
+  disponible en el dispositivo.
+- **Por qué:** los gimnasios tienen mala señal. El [5] corrigió que la UI no se
+  rompa, pero no garantiza entrenar entero sin red.
+- **Toca:** `features/training/`, `features/progress/`, `apps/mobile/app/`, el
+  borrador de sesión en AsyncStorage, `docs/`.
+- **No toca:** descarga de todo el catálogo, media remota obligatoria,
+  autenticación offline inicial ni sustitución del almacenamiento existente.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; tras abrir una rutina
+  conectado, activar modo avión permite iniciar, confirmar series, usar descansos,
+  recargar, continuar y finalizar, conservando el resultado local; los datos de
+  ejercicios y series están disponibles sin depender de imágenes o videos remotos;
+  una rutina nunca cargada muestra una explicación única y permite volver; el socio
+  completa el recorrido sin configurar ningún modo offline.
+- **Depende de:** [13], [19]; [3] y [5], completados.
+- **Esfuerzo:** M — es el item más grande del plan. Si se vuelve inmanejable,
+  partirlo entre lectura de datos y ciclo de sesión.
+- **Riesgo:** depender sin darse cuenta de consultas remotas, o perder el borrador
+  durante la finalización local.
 
-#### [T1] Deja `pnpm typecheck` en verde
+### [15] Cierra la sincronización de las sesiones completadas offline
 
-- **Objetivo:** que `pnpm typecheck` termine en verde (exit 0) en todo el
-  monorepo.
-- **Por qué ahora:** el criterio "`pnpm typecheck` pasa" aparece en el criterio
-  de aceptación de todos los items del plan, pero hoy nunca es literalmente
-  cierto: `apps/mobile/scripts/checks/weekPlan.check.ts` tiene 3 errores de tipo
-  preexistentes (`Type '"abdomen"' is not assignable to type 'MuscleGroupSlug'`,
-  líneas 18, 34 y 80 — el slug real del enum `public.muscle_group` es `'abs'`,
-  no `'abdomen'`). Cualquier agente ve el comando "fallar" sin poder distinguir
-  si su cambio rompió algo. Ya le costó tiempo a Codex, que tuvo que armarse un
-  `tsconfig` temporal para esquivarlos.
-- **Toca:** `apps/mobile/scripts/checks/weekPlan.check.ts`, `docs/`.
-- **No toca:** `validateWeekPlan` ni `matchesTemplate` (la lógica que el check
-  verifica no cambia), otros scripts de `scripts/checks/`, `pnpm media:check`.
-- **Criterio de aceptación:** `pnpm typecheck` termina sin ningún error;
-  `apps/mobile/scripts/checks/weekPlan.check.ts` sigue corriendo igual (mismos
-  9 casos, mismos resultados) — se ejecuta a mano con
-  `npx tsx apps/mobile/scripts/checks/weekPlan.check.ts` porque no hay test
-  runner ni script de `package.json` para esto (ver `docs/progression.md`).
-- **Depende de:** nada.
-- **Esfuerzo:** XS.
-- **Riesgo:** ninguno relevante — es un typo de slug, no un problema de lógica.
-
-#### [T2] CI mínimo
-
-- **Objetivo:** un workflow de GitHub Actions que corra `pnpm typecheck` en
-  cada PR.
-- **Por qué ahora:** sin esto, "`pnpm typecheck` pasa" es una promesa que cada
-  agente cumple o no por su cuenta. Con CI pasa a ser una barrera real antes de
-  mergear.
-- **Toca:** `.github/workflows/`, `docs/`.
-- **No toca:** otros checks (`db:status`, `media:check`) hasta que se pida
-  explícitamente; no agrega test runner ni tests nuevos.
-- **Criterio de aceptación:** un PR con un error de tipo introducido a propósito
-  falla el check de GitHub Actions; el mismo PR sin el error lo pasa.
-- **Depende de:** [T1] (correr CI contra un `typecheck` que ya está en rojo no
-  sirve de nada).
+- **Objetivo:** enviar los entrenamientos pendientes al recuperar conexión sin
+  perderlos ni duplicarlos.
+- **Toca:** `offlineWorkoutQueue.ts` en su ubicación actual, `features/progress/`,
+  `features/training/`, `apps/mobile/app/`, `docs/`.
+- **No toca:** una cola nueva, un motor de sincronización nuevo, la reescritura del
+  RPC idempotente ni la sincronización de otros módulos.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; completar una sesión offline,
+  cerrar la app, recuperar conexión y reabrir sincroniza exactamente una sesión con
+  sus series; interrumpir el envío y reintentar no duplica registros; un fallo
+  conserva el pendiente y solo una confirmación de guardado permite retirarlo; el
+  socio ve «Guardado en este dispositivo» o «Sincronizado» en una superficie
+  existente, sin pasos adicionales.
+- **Depende de:** [14].
 - **Esfuerzo:** S.
-- **Riesgo:** ninguno de producto. **Bloqueo de acceso:** tocar
-  `.github/workflows/` requiere el scope `workflow` en el token de quien abra
-  el PR; el dueño del repo todavía no lo tiene. Avisarle al llegar a este item
-  en vez de intentar bypassearlo.
+- **Riesgo:** retirar pendientes antes de confirmarlos, duplicar sesiones, o enviar
+  un formato incompatible con el [12].
+
+### [16] Reemplaza el catálogo seleccionable por los datos oficiales peruanos
+
+- **Objetivo:** usar la TPCA 2023 del INS/CENAN como fuente del catálogo de
+  registro, conservando trazabilidad y registros históricos.
+- **Fuente:** `docs/fuentes/TPCA-Edicion-11-2023-INS-CENAN.xlsx` (gitignorado,
+  legible en local). Hoja principal con 2.315 alimentos base; hoja
+  «S- Alimentos Preparados» con 569 platos peruanos distintos, agrupados en
+  entradas, segundos, refrescos, bebidas de desayuno y postres. Columnas útiles:
+  energía en kcal, proteínas, grasa total, carbohidratos disponibles, fibra.
+  Cada plato aparece hasta cinco veces, una por estrato socioeconómico, con
+  diferencias que son ruido (arroz con pollo: 139-145 kcal, 6,8-7,0 g de proteína).
+  Todo está expresado por 100 gramos: la tabla no trae tamaños de porción.
+- **Toca:** el archivo anterior como entrada de lectura, `docs/nutrition-data.md`,
+  `supabase/migrations/` mediante migración nueva si hace falta,
+  `features/nutrition/`.
+- **No toca:** migraciones aplicadas, macros históricos, metas, pesos de porción ni
+  publicación del archivo gitignorado.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; la importación es reproducible
+  y registra recuentos, exclusiones y correspondencias; los platos se agrupan por
+  identidad y preparación, promediando los estratos disponibles sin convertir
+  faltantes en cero; se conservan fuente y unidad por 100 g; un socio encuentra un
+  plato por su nombre y lo registra sin elegir estrato; repetir la importación no
+  duplica alimentos; registros anteriores y atajos conservan sus valores y
+  referencias, sin sustituciones por coincidencia de nombre.
+- **Depende de:** [4], completado.
+- **Esfuerzo:** M — casi 2.900 filas con deduplicación y trazabilidad.
+- **Riesgo:** mezclar alimentos distintos, confundir carbohidratos disponibles con
+  otra medida, o romper referencias al retirar el catálogo anterior.
+
+### [17] Incorpora porciones medidas para los platos habituales
+
+**Bloqueado por trabajo del mundo físico, no por código.** La TPCA da valores por
+100 g y no trae tamaños de porción. Alguien tiene que pesar con balanza un lote de
+porciones reales: un plato de arroz servido normal, un cucharón, una presa de pollo,
+un pan, una porción de menestra. Sin ese lote el item no se puede cerrar, y ningún
+agente puede producirlo.
+
+- **Objetivo:** registrar una porción cotidiana sin exigir que el socio conozca su
+  peso en gramos.
+- **Toca:** `docs/nutrition-data.md`, `features/nutrition/`,
+  `supabase/migrations/` solo si el modelo actual no admite equivalencias.
+- **No toca:** pesos inventados, equivalencias universales de «plato», los valores
+  por 100 g, ni pantallas nuevas.
+- **Criterio de aceptación:** existe un lote documentado de porciones pesadas con
+  balanza, indicando alimento, recipiente o tamaño, gramos comestibles y
+  procedencia; `pnpm typecheck` pasa; para ese lote, un socio selecciona el alimento
+  y confirma una porción rotulada con su equivalencia aproximada en gramos, sin
+  escribir el peso; cambiar la cantidad escala los nutrientes correctamente; los
+  alimentos sin equivalencia siguen admitiendo gramos, sin mostrar porciones
+  ficticias.
+- **Depende de:** [16] y la entrega de las mediciones por el dueño.
+- **Esfuerzo:** S, una vez que existan las mediciones.
+- **Riesgo:** presentar una porción local como universal, o incluir huesos y otras
+  partes no comestibles en la equivalencia.
+
+### [18] Agrega seguimiento de peso corporal sin recalcular las metas
+
+- **Objetivo:** registrar peso con fecha y consultar su evolución desde
+  Alimentación.
+- **Toca:** `features/nutrition/`, `apps/mobile/app/`, `packages/contracts/`,
+  `supabase/migrations/` si corresponde, `docs/nutrition-data.md`.
+- **No toca:** el cálculo del onboarding, las metas vigentes, objetivos adaptativos,
+  recordatorios ni una frecuencia obligatoria.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; desde Alimentación, un socio
+  abre «Mi peso», introduce el valor y guarda en la misma pantalla con la fecha
+  actual preseleccionada; puede corregir fecha y valor; los registros aparecen
+  ordenados en una evolución visible que reutiliza recursos gráficos existentes;
+  recargar conserva los datos y las metas nutricionales no cambian; un peso inicial
+  sin fecha verificable no se presenta como medición de hoy.
+- **Depende de:** [4], completado.
+- **Esfuerzo:** S.
+- **Riesgo:** duplicar mediciones, atribuir una fecha falsa al onboarding, o
+  modificar el perfil usado para calcular macros.
 
 ## 4. Preguntas abiertas
 

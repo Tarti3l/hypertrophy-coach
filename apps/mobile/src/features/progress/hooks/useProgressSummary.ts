@@ -10,6 +10,13 @@ type ProgressSummary = {
   streakDays: number;
   isLoading: boolean;
   error: string | null;
+  /**
+   * false solo cuando nunca hubo un dato real que mostrar: ni el servidor respondió una vez
+   * ni hay entrenamientos en la cola local. Con esto en false, `streakDays: 0` y
+   * `completedDates: []` son "no sabemos", no "el usuario no entrenó" — la pantalla debe
+   * decir "Sin datos disponibles" en vez de mostrar el cero como si fuera un hecho.
+   */
+  hasData: boolean;
   reload: () => void;
 };
 
@@ -22,6 +29,7 @@ export function useProgressSummary(): ProgressSummary {
   const { pending } = usePendingWorkouts();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const isMountedRef = useRef(true);
 
   const load = useCallback(async () => {
@@ -31,6 +39,7 @@ export function useProgressSummary(): ProgressSummary {
       const dates = await getCompletedWorkoutDates();
       if (!isMountedRef.current) return;
       setServerDates(dates);
+      setHasLoadedOnce(true);
     } catch {
       if (!isMountedRef.current) return;
       setError('No pudimos cargar tu historial. Revisa tu conexión e inténtalo de nuevo.');
@@ -66,6 +75,8 @@ export function useProgressSummary(): ProgressSummary {
     streakDays: calculateWorkoutStreak(completedDates),
     isLoading,
     error,
+    // Un entrenamiento en cola ya es un dato real, aunque el servidor nunca haya respondido.
+    hasData: hasLoadedOnce || pending.length > 0,
     reload: () => void load(),
   };
 }

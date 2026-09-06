@@ -17,13 +17,13 @@ import { useProgressSummary } from '../hooks/useProgressSummary';
 
 export function HomeScreen() {
   const router = useRouter();
-  const { routines, isLoading: areRoutinesLoading } = useRoutines();
+  const { routines, isLoading: areRoutinesLoading, error: routinesError, reload: reloadRoutines } = useRoutines();
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const { profileError, refreshProfile, signOut } = useAuth();
-  const { completedDates, streakDays, isLoading, error, reload } = useProgressSummary();
+  const { completedDates, streakDays, isLoading, error, hasData, reload } = useProgressSummary();
   const { count: pendingCount, blockedCount } = usePendingWorkouts();
 
   const banner = profileError
@@ -31,6 +31,12 @@ export function HomeScreen() {
     : error
       ? { message: error, retry: reload }
       : null;
+
+  // Nunca cargó ninguna rutina Y el intento falló: no es lo mismo que "el usuario no
+  // tiene rutina". Sin esto, quedarse sin red mandaba a "Armar mi rutina" y el socio
+  // terminaba creando una rutina duplicada en vez de simplemente reintentar.
+  const routinesUnavailable = Boolean(routinesError) && routines.length === 0;
+  const showProgressUnavailable = Boolean(error) && !hasData;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -74,8 +80,8 @@ export function HomeScreen() {
         ) : null}
 
         <View style={styles.stack}>
-          <StreakBadge streakDays={streakDays} isLoading={isLoading} />
-          <WeeklyCalendar completedDates={completedDates} />
+          <StreakBadge streakDays={streakDays} isLoading={isLoading} unavailable={showProgressUnavailable} />
+          <WeeklyCalendar completedDates={completedDates} unavailable={showProgressUnavailable} />
 
           <Card tone="accent">
             <Eyebrow color={colors.accent}>Cuando quieras</Eyebrow>
@@ -83,19 +89,26 @@ export function HomeScreen() {
             <Text style={styles.actionMeta}>
               {areRoutinesLoading
                 ? 'Buscando tu rutina…'
-                : routines.length === 0
-                  ? 'Todavía no tienes rutina. Te ayudamos a armar una en cinco pasos.'
-                  : routines.length === 1
-                    ? `Tienes "${routines[0].name}" lista para empezar.`
-                    : 'Elige cuál de tus rutinas quieres hacer hoy.'}
+                : routinesUnavailable
+                  ? 'No pudimos comprobar tu rutina. Revisa tu conexión.'
+                  : routines.length === 0
+                    ? 'Todavía no tienes rutina. Te ayudamos a armar una en cinco pasos.'
+                    : routines.length === 1
+                      ? `Tienes "${routines[0].name}" lista para empezar.`
+                      : 'Elige cuál de tus rutinas quieres hacer hoy.'}
             </Text>
             <PrimaryButton
-              label={routines.length === 0 && !areRoutinesLoading ? 'Armar mi rutina' : 'Empezar entrenamiento'}
+              label={routinesUnavailable ? 'Reintentar' : routines.length === 0 && !areRoutinesLoading ? 'Armar mi rutina' : 'Empezar entrenamiento'}
               icon="arrowRight"
               disabled={areRoutinesLoading}
-              // Sin rutina, mandar a una lista vacía es un paso de más: va directo al
-              // constructor. Con rutina, a la lista para elegir el día.
-              onPress={() => router.push(routines.length === 0 ? '/routine-builder' : '/routines')}
+              onPress={() => {
+                // Sin datos por un fallo de red, reintentar; nunca ofrecer crear una rutina
+                // duplicada solo porque no pudimos confirmar que ya tiene una.
+                if (routinesUnavailable) { reloadRoutines(); return; }
+                // Sin rutina, mandar a una lista vacía es un paso de más: va directo al
+                // constructor. Con rutina, a la lista para elegir el día.
+                router.push(routines.length === 0 ? '/routine-builder' : '/routines');
+              }}
               style={styles.actionButton}
             />
           </Card>

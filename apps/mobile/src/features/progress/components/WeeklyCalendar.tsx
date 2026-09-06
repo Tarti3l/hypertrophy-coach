@@ -10,7 +10,14 @@ type WeekDay = {
   dayOfMonth: number;
 };
 
-export function WeeklyCalendar({ completedDates, referenceDate = new Date() }: { completedDates: string[]; referenceDate?: Date }) {
+type WeeklyCalendarProps = {
+  completedDates: string[];
+  referenceDate?: Date;
+  /** true cuando no hay ni un dato real que mostrar (nunca cargó y no hay nada en cola). */
+  unavailable?: boolean;
+};
+
+export function WeeklyCalendar({ completedDates, referenceDate = new Date(), unavailable = false }: WeeklyCalendarProps) {
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -24,7 +31,9 @@ export function WeeklyCalendar({ completedDates, referenceDate = new Date() }: {
       <View accessibilityLabel="Calendario semanal de entrenamientos">
         <View style={styles.header}>
           <Text style={styles.title}>Esta semana</Text>
-          <Text style={styles.count}>{doneThisWeek === 1 ? '1 sesión' : `${doneThisWeek} sesiones`}</Text>
+          <Text style={styles.count}>
+            {unavailable ? 'Sin datos disponibles' : doneThisWeek === 1 ? '1 sesión' : `${doneThisWeek} sesiones`}
+          </Text>
         </View>
         <View style={styles.days}>
           {week.map((day) => {

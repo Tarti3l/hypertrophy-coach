@@ -5,6 +5,7 @@ import { createUuid } from '@/utils/ids';
 
 import { enqueueWorkout } from '../services/offlineWorkoutQueue';
 import { classifySaveError, saveCompletedWorkout } from '../services/workoutSessionRepository';
+import { clearWorkoutSessionDraft, loadWorkoutSessionDraft, saveWorkoutSessionDraft } from '../services/workoutSessionDraft';
 import { CompletedWorkoutDraft, CompletedWorkoutSet, WorkoutSetDraft } from '../types/workoutSession';
 import { applySetValue, EFFECTIVE_SETS_PER_EXERCISE, reconcileSets } from './setDrafts';
 
@@ -14,10 +15,21 @@ export type WorkoutSaveState = 'idle' | 'saved' | 'queued';
 /**
  * `setsByExerciseId` viene de la rutina cuando la sesión nace de una: cada ejercicio
  * puede tener su propio número de series efectivas. Sin rutina, todos usan el valor por defecto.
+ *
+ * `sessionKey` identifica la combinación rutina+día para recuperar el borrador de una
+ * sesión activa tras cerrar y reabrir la app. `null` cuando no hay rutina (sesión libre):
+ * esas no se recuperan, igual que antes de este cambio.
  */
-export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Record<string, number>) {
+export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Record<string, number>, sessionKey?: string | null) {
   const { user } = useAuth();
-  const [startedAt] = useState(() => new Date());
+  const [startedAt, setStartedAt] = useState(() => new Date());
+  // null mientras no sabemos si hay un borrador que restaurar: evita que el efecto de
+  // guardado pise un borrador existente con el estado en blanco del primer render.
+  const [isDraftHydrated, setIsDraftHydrated] = useState(false);
+  const draftStorageKey = useMemo(
+    () => (user?.id && sessionKey ? { userId: user.id, sessionKey } : null),
+    [user?.id, sessionKey]
+  );
   // Una sola clave de idempotencia por sesión: la comparten el intento online y todos
   // los reintentos de la cola, así el servidor nunca crea un duplicado.
   const [clientId] = useState(() => createUuid());
@@ -99,6 +111,53 @@ export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Reco
     });
   }, []);
 
+  /**
+   * Restaura el borrador de una sesión activa al entrar a la misma rutina y día.
+   *
+   * Se dispara solo al cambiar `draftStorageKey` (no en cada render), y corre antes de
+   * que el usuario pueda tocar nada: si hay un borrador, pisa el estado en blanco que
+   * puso el efecto de reconciliación de arriba. `active` evita aplicar una respuesta
+   * tardía si la pantalla cambia de rutina/día antes de que resuelva.
+   */
+  useEffect(() => {
+    if (isFinished) return;
+    if (!draftStorageKey) {
+      setIsDraftHydrated(true);
+      return;
+    }
+
+    let active = true;
+    setIsDraftHydrated(false);
+
+    void loadWorkoutSessionDraft(draftStorageKey.userId, draftStorageKey.sessionKey).then((draft) => {
+      if (!active) return;
+      if (draft) {
+        setSetsByExercise(draft.setsByExercise);
+        setSkippedWarmups(draft.skippedWarmups);
+        setStartedAt(new Date(draft.startedAt));
+      }
+      setIsDraftHydrated(true);
+    });
+
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftStorageKey, isFinished]);
+
+  /**
+   * Guarda el borrador en cada cambio de las series, para sobrevivir a un cierre de la
+   * app. Nunca antes de `isDraftHydrated`: si guardara con el estado en blanco del primer
+   * render pisaría el borrador que todavía no terminó de cargar.
+   */
+  useEffect(() => {
+    if (!draftStorageKey || !isDraftHydrated || isFinished) return;
+
+    void saveWorkoutSessionDraft(draftStorageKey.userId, draftStorageKey.sessionKey, {
+      startedAt: startedAt.toISOString(),
+      setsByExercise,
+      skippedWarmups
+    });
+  }, [draftStorageKey, isDraftHydrated, isFinished, setsByExercise, skippedWarmups, startedAt]);
+
   /** Quita o devuelve la serie de calentamiento de un ejercicio. */
   const toggleWarmup = useCallback((exerciseId: string) => {
     setSkippedWarmups((current) =>
@@ -173,6 +232,7 @@ export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Reco
       await saveCompletedWorkout(draft);
       setIsFinished(true);
       setSaveState('saved');
+      if (draftStorageKey) void clearWorkoutSessionDraft(draftStorageKey.userId, draftStorageKey.sessionKey);
       return 'saved';
     } catch (error) {
       // Solo los fallos de red van a la cola. Un rechazo de validación se reintentaría
@@ -187,6 +247,8 @@ export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Reco
         await enqueueWorkout(draft, userId);
         setIsFinished(true);
         setSaveState('queued');
+        // Ya está en la cola de sincronización: el borrador de "en curso" no hace más falta.
+        if (draftStorageKey) void clearWorkoutSessionDraft(draftStorageKey.userId, draftStorageKey.sessionKey);
         return 'queued';
       } catch {
         setFinishError('No pudimos guardar tu entrenamiento ni en el dispositivo. No cierres la app e inténtalo otra vez.');
@@ -195,7 +257,7 @@ export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Reco
     } finally {
       setIsFinishing(false);
     }
-  }, [clientId, completedAnySetCount, isFinished, isFinishing, setsByExercise, startedAt, user?.id]);
+  }, [clientId, completedAnySetCount, draftStorageKey, isFinished, isFinishing, setsByExercise, startedAt, user?.id]);
 
   return {
     elapsedSeconds,

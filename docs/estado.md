@@ -12,7 +12,7 @@ empiece una sesión lo lee primero.
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
-| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | en curso | | Tomado por Claude en branch `item-3-persistencia`. Sale del hallazgo del [2]. Diagnóstico + arreglo localizado; un cambio estructural se presenta para aprobación, no se ejecuta |
+| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | | Resuelto en branch `item-3-persistencia` (Claude), sin PR abierto todavía. Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Detalle en `docs/recorrido-minimo.md` (caso 5) |
 | [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
 | [5] Corregir los estados de desconexión | pendiente | | |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |
@@ -71,6 +71,15 @@ entrada con fecha y de qué item salió.
   comida en dos toques (item [8]) ya funcionan tal como estos items los
   necesitan. El dashboard de Alimentación muestra consumos "de ejemplo"
   (hardcodeados), no lo realmente registrado — la meta sí usa el cálculo real.
+- **2026-09-06, item [3]:** causa de la pérdida de series confirmada: nada se
+  persistía hasta "Finalizar entrenamiento" (todo vivía en estado de React de
+  `useWorkoutSession`). Arreglo localizado con un borrador en AsyncStorage
+  (mismo mecanismo que ya usa `offlineWorkoutQueue.ts`), sin tocar esquema ni
+  sincronización. Límite aceptado: las sustituciones de ejercicio y los
+  ejercicios saltados en la sesión no se restauran tras recargar, solo las
+  series y el calentamiento — no estaba en el repro del hallazgo original.
+  Detalle completo (causa, arreglo, reverificación manual) en
+  `docs/recorrido-minimo.md`, caso 5.
 
 ## Preguntas abiertas
 

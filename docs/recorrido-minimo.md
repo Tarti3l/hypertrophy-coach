@@ -54,7 +54,10 @@ referencia de hoy" en Alimentación etiqueta explícitamente sus consumos como
 registrado; solo la meta usa el cálculo real. No es parte del criterio de este
 item, pero condiciona cualquier trabajo futuro sobre ese dashboard.
 
-## 5. Cerrar y reabrir la app — FALLA
+## 5. Cerrar y reabrir la app — CORREGIDO (item [3])
+
+**Estado:** corregido y reverificado a mano en Expo Web contra Supabase real
+(2026-09-06). Repro original abajo, seguido de causa y arreglo.
 
 **Pasos:**
 1. Empezar sesión con "La rutina para estar como cbum", día 1.
@@ -82,6 +85,51 @@ probó en nativo — puede ser un artefacto de cómo se persiste el estado de
 sesión en la capa web, o un problema real de la capa de datos que también
 afecta nativo. Se registra como hallazgo, no se diagnosticó la causa (fuera de
 alcance de este item; ver `docs/estado.md`).
+
+### Causa (item [3])
+
+`useWorkoutSession` (`apps/mobile/src/features/progress/hooks/useWorkoutSession.ts`)
+guardaba las series confirmadas solo en estado de React (`setSetsByExercise`).
+Nada se escribía en disco ni en Supabase hasta tocar "Finalizar entrenamiento"
+(`finishWorkout` → `saveCompletedWorkout` / `enqueueWorkout`). Un recargo
+completo destruye ese estado en memoria sin haber llegado nunca a ese punto,
+así que las series confirmadas antes de finalizar no tenían dónde sobrevivir.
+No era un bug puntual: el diseño nunca contempló una sesión que sobreviviera
+a un cierre de la app, y por eso ninguna prueba lo cubría.
+
+Lo que sí sobrevivía (racha semanal, PR de otro ejercicio) venía de una sesión
+**ya finalizada** en una prueba anterior, no de la sesión interrumpida del
+caso 5 — esa sí llegó a Supabase por el camino normal.
+
+### Arreglo (item [3])
+
+Se agregó un borrador local de la sesión activa, con el mismo mecanismo
+(AsyncStorage) que ya usa `offlineWorkoutQueue.ts` para la cola de
+sincronización — no es una librería nueva ni un rediseño de la persistencia
+existente:
+
+- `apps/mobile/src/features/progress/services/workoutSessionDraft.ts` (nuevo):
+  `loadWorkoutSessionDraft` / `saveWorkoutSessionDraft` /
+  `clearWorkoutSessionDraft`, con clave `usuario + rutina + día`.
+- `useWorkoutSession` restaura el borrador al montar (antes de que el usuario
+  pueda tocar nada), lo actualiza en cada cambio de series, y lo borra al
+  finalizar con éxito (guardado o encolado offline). Reutiliza
+  `reconcileSets` (ya existente) para ajustar el borrador restaurado a la
+  forma vigente sin perder series ya completadas.
+- `ActiveWorkoutScreen` le pasa la clave `routineId:day` a `useWorkoutSession`.
+
+**Límite conocido, aceptado por alcance:** las sustituciones de ejercicio
+(`swaps`) y los ejercicios saltados no se restauran tras recargar — vuelven a
+su estado original de la rutina, igual que el resto del estado de pantalla
+que no forma parte de este item. Solo se restauran las series y el
+calentamiento.
+
+**Reverificado (2026-09-06):** confirmar dos series de "Apertura en máquina
+(pec deck)" (20 kg × 15, 22,5 kg × 12), recargar completo → conserva 2/5 con
+los mismos valores; una segunda recarga no duplica nada; "Finalizar
+entrenamiento" guarda normalmente, el ejercicio aparece en Progreso ("Ya
+tienes tu primer registro") y la racha/semana de Inicio suben igual que
+antes.
 
 ## 6. Abrir sin conexión — FALLA (parcial)
 

@@ -54,13 +54,13 @@ export function SetTracker({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   /**
-   * Serie que acaba de cerrarse con 12 reps o más y aún no ha contestado.
-   *
-   * Llegar a 12 sin que cueste significa que el peso se quedó corto, y eso solo lo
-   * sabe el usuario. Aparece al marcar la serie, no al escribir, para no interrumpir
-   * mientras teclea.
+   * Explicación del rango efectivo, una sola vez por ejercicio: al cerrar la PRIMERA
+   * serie efectiva, sin importar cuántas reps hizo. Antes aparecía en cada serie que
+   * llegaba a 12, que en la práctica era casi todas (el arrastre copia el valor hacia
+   * abajo) — un socio nuevo no necesita que se lo repitan tres veces por ejercicio.
    */
-  const [repCheck, setRepCheck] = useState<{ setNumber: number; reps: number } | null>(null);
+  const [guidance, setGuidance] = useState<{ setNumber: number; reps: number } | null>(null);
+  /** Solo se pregunta "¿te costó?" cuando esa primera serie llegó a 12: por debajo no aplica. */
   const [repVerdict, setRepVerdict] = useState<{ setNumber: number; couldDoMore: boolean } | null>(null);
 
   const effectiveSets = sets.filter((set) => set.kind === 'effective');
@@ -69,17 +69,21 @@ export function SetTracker({
 
   const handleToggle = (set: WorkoutSetDraft) => {
     const isCompleting = !set.completed;
+    // Antes de togglear: cuántas series efectivas ya estaban completas. Si es la
+    // primera vez que completamos una serie efectiva de este ejercicio, corresponde
+    // la explicación; en la segunda y la tercera, no.
+    const wasFirstEffective = set.kind === 'effective' && completedEffective === 0;
     onToggleComplete(set.setNumber);
 
     if (!isCompleting) {
-      if (repCheck?.setNumber === set.setNumber) setRepCheck(null);
+      if (guidance?.setNumber === set.setNumber) setGuidance(null);
       if (repVerdict?.setNumber === set.setNumber) setRepVerdict(null);
       return;
     }
 
     const reps = Number(set.repetitions.trim());
-    if (set.kind === 'effective' && Number.isInteger(reps) && reps >= REP_CEILING) {
-      setRepCheck({ setNumber: set.setNumber, reps });
+    if (wasFirstEffective && Number.isInteger(reps)) {
+      setGuidance({ setNumber: set.setNumber, reps });
       setRepVerdict(null);
     }
   };
@@ -92,7 +96,7 @@ export function SetTracker({
       if (set.kind !== 'effective' || set.setNumber <= fromSetNumber || set.completed) continue;
       onUpdateSet(set.setNumber, 'weightKg', text);
     }
-    setRepCheck(null);
+    setGuidance(null);
     setRepVerdict(null);
   };
 
@@ -154,7 +158,8 @@ export function SetTracker({
         // y bloquear ahí sería castigar justo el esfuerzo que se pide.
         const belowFloor = !isWarmup && hasReps && repetitions < MIN_REPS;
 
-        const showCheck = repCheck?.setNumber === set.setNumber;
+        const showGuidance = guidance?.setNumber === set.setNumber;
+        const guidanceReachedCeiling = showGuidance && guidance.reps >= REP_CEILING;
         const showVerdict = repVerdict?.setNumber === set.setNumber;
 
         return (
@@ -237,35 +242,52 @@ export function SetTracker({
                 de que alguien piense que la app está rota. */}
             {missing && isFirstPending && !disabled ? <Text style={styles.hint}>{missing}</Text> : null}
 
-            {belowFloor && !showCheck && !showVerdict ? (
+            {belowFloor && !showGuidance && !showVerdict ? (
               <Text style={styles.hintWarn}>
                 {repetitions} reps. Si no llegas a {MIN_REPS}, baja el peso: con menos la técnica se rompe
                 antes de que el músculo se canse.
               </Text>
             ) : null}
 
-            {showCheck ? (
+            {showGuidance ? (
               <View style={styles.prompt}>
-                <Text style={styles.promptTitle}>¿Te costó hacer las {repCheck.reps} repeticiones?</Text>
+                <Text style={styles.promptTitle}>Cuántas repeticiones buscar</Text>
+                <Text style={styles.promptBody}>Entre {MIN_REPS} y {REP_CEILING} por serie.</Text>
+                <Text style={styles.promptBody}>Alrededor de la {MIN_REPS} ya te debería costar bastante.</Text>
                 <Text style={styles.promptBody}>
-                  Por la {MIN_REPS} ya debería costarte mucho, y la última no deberías poder repetirla.
+                  Si llegas a {REP_CEILING} y sientes que podías hacer más, el peso está bajo: súbelo en la
+                  próxima serie.
                 </Text>
-                <View style={styles.promptActions}>
+                <Text style={styles.promptBody}>Si no llegas a {MIN_REPS}, está muy alto: bájalo.</Text>
+                {guidanceReachedCeiling ? (
+                  <>
+                    <Text style={styles.promptBody}>¿Esta serie te costó?</Text>
+                    <View style={styles.promptActions}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => { setRepVerdict({ setNumber: set.setNumber, couldDoMore: false }); setGuidance(null); }}
+                        style={({ pressed }) => [styles.promptButton, pressed && styles.pressed]}
+                      >
+                        <Text style={styles.promptButtonText}>Me costó</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => { setRepVerdict({ setNumber: set.setNumber, couldDoMore: true }); setGuidance(null); }}
+                        style={({ pressed }) => [styles.promptButton, styles.promptButtonAlt, pressed && styles.pressed]}
+                      >
+                        <Text style={[styles.promptButtonText, styles.promptButtonTextAlt]}>Podía hacer más</Text>
+                      </Pressable>
+                    </View>
+                  </>
+                ) : (
                   <Pressable
                     accessibilityRole="button"
-                    onPress={() => { setRepVerdict({ setNumber: set.setNumber, couldDoMore: false }); setRepCheck(null); }}
-                    style={({ pressed }) => [styles.promptButton, pressed && styles.pressed]}
+                    onPress={() => setGuidance(null)}
+                    style={({ pressed }) => [styles.dismiss, pressed && styles.pressed]}
                   >
-                    <Text style={styles.promptButtonText}>Me costó</Text>
+                    <Text style={styles.dismissText}>Entendido</Text>
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => { setRepVerdict({ setNumber: set.setNumber, couldDoMore: true }); setRepCheck(null); }}
-                    style={({ pressed }) => [styles.promptButton, styles.promptButtonAlt, pressed && styles.pressed]}
-                  >
-                    <Text style={[styles.promptButtonText, styles.promptButtonTextAlt]}>Podía hacer más</Text>
-                  </Pressable>
-                </View>
+                )}
               </View>
             ) : null}
 
@@ -277,7 +299,7 @@ export function SetTracker({
                 <Text style={styles.promptBody}>
                   {repVerdict.couldDoMore
                     ? `Si pasas de ${REP_CEILING} sin que cueste, la serie se queda lejos del fallo y el estímulo se pierde. Sube en la siguiente.`
-                    : `Perfecto. Cuando llegar a ${REP_CEILING} deje de costarte, ahí toca subir.`}
+                    : `Perfecto. Cuando ${REP_CEILING} deje de costarte, ahí toca subir.`}
                 </Text>
                 {repVerdict.couldDoMore && requiresWeight && hasWeight && weight > 0 ? (
                   <Pressable

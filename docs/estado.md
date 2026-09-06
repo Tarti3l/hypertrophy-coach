@@ -21,6 +21,7 @@ empiece una sesión lo lee primero.
 | [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
+| [12] Ajustar el rango de series efectivas y el aviso de subir peso | hecho | #12 | Resuelto en branch `item-12-rango-efectivo` (Claude): reps fijas en 8-12, series fijas en 3, aviso una sola vez con texto final. Detalle completo en Hallazgos, `docs/progression.md` y `docs/rutinas.md` §1.1 |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
 | [T2] CI mínimo | hecho | #11 | Resuelto en branch `item-t2-ci` (Claude). `.github/workflows/typecheck.yml`: un solo job, `pnpm typecheck` en cada PR contra `main`, sin lint/build/deploy. No bloquea el merge por sí solo — falta marcarlo "required status check" en Settings → Branches, ajuste del repositorio que le queda al dueño. De paso corrige la regla de `docs/estado.md` en `AGENTS.md` (ver Hallazgos) |
 
@@ -116,6 +117,84 @@ entrada con fecha y de qué item salió.
   evitar que otro agente lo agarre en paralelo, no cierra el item. La regla
   anterior no lo dejaba explícito, y eso fue lo que dejó la fila del item [4]
   huérfana (en revisión, sin PR, con una nota de un bloqueo ya resuelto).
+- **2026-09-06, item [12]:** hay DOS mecanismos de progresión en el código,
+  documentados de forma desigual, que hoy pueden contradecirse:
+  1. **`services/progression.ts`** (documentado en `docs/progression.md`):
+     regla 2-por-2 de la NSCA, **entre sesiones**. Compara la última serie de
+     las dos sesiones anteriores contra `target_reps` (10 por defecto, o el
+     valor que fije la rutina — "ese valor manda", dice el propio documento).
+     Produce la sugerencia que se ve ANTES de registrar ("Toca subir peso",
+     "Punto de partida", etc.).
+  2. **`SetTracker.tsx`** (sin documentar en ningún lado): chequeo **dentro de
+     la misma sesión**, con `MIN_REPS = 8` y `REP_CEILING = 12` fijos en el
+     código, sin relación con `target_reps`. Al completar una serie efectiva
+     con 12+ reps pregunta "¿te costó?" y, si la respuesta es que podía hacer
+     más, sugiere subir el peso de las series que faltan de esa misma sesión.
+     El piso de 8 cita a Schoenfeld et al. (2021) en un comentario del código,
+     nunca en `docs/`.
+
+  **Contradicción concreta, ya observada en vivo:** la rutina cargada fija
+  `target_reps = 15` para "Apertura en máquina (pec deck)" (`Apunta a 15
+  reps`, visible en pantalla). El mecanismo 1 evaluaría la regla 2-por-2
+  contra 15+2=17. Pero el mecanismo 2 ignora ese 15 por completo: en cuanto
+  el socio llega a 12 reps —tres antes de su objetivo real— le pregunta si
+  "podía hacer más" y, si dice que sí, le dice que suba el peso, contra el
+  objetivo de 15 que la propia pantalla le está pidiendo dos líneas más
+  arriba. `docs/progression.md` dice "cuando el editor de rutinas permita
+  fijar `target_reps`, ese valor manda" — pero en el mecanismo 2 no manda.
+
+  **No corregido:** el dueño del repo pidió no tocar `docs/progression.md`
+  por cuenta propia; queda una decisión pendiente (¿el rango 8-12 debe
+  respetar `target_reps` cuando la rutina fija uno distinto, o es un techo/
+  piso que ninguna rutina debería pisar y entonces el dato de la rutina es el
+  que está mal?) antes de implementar el item [12] o de documentar el
+  mecanismo 2 en `docs/progression.md`.
+- **2026-09-06, item [12] — resuelto:** dos correcciones al hallazgo anterior
+  y la decisión tomada.
+  - **Corrección:** el "15" no salía de `routine_exercises.target_reps` — esa
+    columna está en `null` en **todas** las filas de la base real, se
+    confirmó por consulta directa. Salía de `exercises.default_reps_high`
+    (nivel catálogo, no rutina), que `ActiveWorkoutScreen` usa como
+    respaldo cuando la rutina no fija nada — que es siempre, hoy.
+  - **Alcance real, no un solo ejercicio:** consultando el catálogo completo,
+    **62 de 91 ejercicios** tienen `default_reps` fuera de 8-12. La
+    inmensa mayoría (~54) es aislamiento con techo alto (curls, elevaciones,
+    pantorrilla, abdominales — 10-20 típico): decisión del dueño, quedan
+    sin tocar. Ocho no eran aislamiento y sí se corrigieron: seis compuestos
+    con rango de fuerza clásico (press de banca, militar, remo con barra,
+    sentadilla con barra, sentadilla frontal, sentadilla profunda — 6-10) y
+    dos variantes de peso corporal (curl nórdico 4-8, dominada asistida
+    5-10). Dos quedan aparte por naturaleza: `farmers-walk` y `plank` no se
+    miden en repeticiones al fallo.
+  - **Decisión:** (b) — el rango 8-12 es fijo, el dato que no encaja es el
+    que está mal. Corregidos `pec-deck` + los ocho de arriba a 8-12 en la
+    migración `00021_fix_default_reps_range.sql`, aplicada al remoto.
+    Documentado como decisión de producto (no hallazgo a medias) en
+    `docs/progression.md`.
+  - **Series por ejercicio, mismo criterio:** `target_sets` variaba de 2 a 4
+    según el rol del ejercicio. Consultando `split_template_slots` (68 filas:
+    25 en 4, 3 en 2, 40 ya en 3) y la rutina personal del dueño del repo (27
+    filas: 12 en 4, 1 en 2, 14 ya en 3), se decidió fijar **3 series efectivas
+    siempre**, misma lógica que el rango de reps. Corregido en la migración
+    `00022_fix_target_sets_range.sql` (templates compartidos completos + la
+    rutina personal del dueño, no rutinas de otros usuarios) y verificado por
+    consulta directa: los 68 slots y las 27 filas ya están en 3. Documentado
+    con su costo conocido (menos volumen semanal, priorizado por adherencia,
+    no como si fuera gratis) en `docs/rutinas.md` §1.1.
+  - **Ojo, dato real:** "La rutina para estar como cbum" es la rutina real del
+    dueño del repo, con la que viene entrenando — no un fixture de prueba
+    armado para QA. La migración le tocó datos reales de uso, a pedido
+    explícito, con el routine_id acotado en el `where`.
+  - **Pregunta abierta, sin resolver:** ¿hay otros usuarios con rutinas
+    propias en la base, y cuántos? `routine_exercises`/`routines` están
+    protegidas por RLS por usuario — ni con la clave publicable ni
+    autenticado como este usuario se puede leer o contar filas de otra
+    persona, y así debe ser. No hay una vía para obtener ese número sin
+    acceso al panel de Supabase (Table Editor / Auth) o una `service_role`
+    key, que el proyecto deliberadamente no expone (`.env.example`: "Nunca
+    uses service_role en la app"). Si hace falta el número, lo tiene que
+    mirar el dueño del repo directamente, o autorizar puntualmente una
+    consulta con esa clave. No se tocó ninguna rutina ajena mientras tanto.
 
 ## Preguntas abiertas
 
@@ -124,6 +203,17 @@ entrada con fecha y de qué item salió.
   Fuera del plan hasta resolverlo.
 - Distribución, participación de entrenadores, cantidad de usuarios y fecha
   objetivo. El plan no depende de ninguna.
+- ~~Rango 8-12 vs. `target_reps` de la rutina (item [12])~~ — resuelto:
+  8-12 es fijo, se corrigen los datos que no encajan. Ver Hallazgos y
+  `docs/progression.md`.
+- **Cuántos usuarios tienen rutinas propias (item [12]):** al fijar
+  `target_sets` en 3 se corrigió la rutina personal del dueño del repo, pero
+  no se pudo averiguar si hay otras personas con rutinas armadas ni cuántas
+  — `routine_exercises`/`routines` están protegidas por RLS y no hay una vía
+  sin panel de Supabase o una `service_role` key para contarlas. Si hay
+  otros usuarios con rutinas que quedaron con `target_sets` fuera de 3 (o
+  `default_reps` fuera de 8-12, del hallazgo anterior), siguen así hasta que
+  el dueño del repo confirme el número y autorice tocarlas.
 
 ## Para el próximo reporte a GPT-6
 

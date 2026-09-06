@@ -273,6 +273,44 @@ sobreviven solo como verificación en el [11].
 - **Riesgo:** extrapolar resultados de Expo Web a nativo, o dar por corregido un
   fallo solo porque quedó documentado.
 
+### [12] Ajusta el rango de series efectivas y el aviso de subir peso
+
+Agregado directamente por el dueño del repo, fuera del plan de GPT-6 y de la
+numeración `[1]`–`[11]`. Se numera como continuación del plan de producto,
+distinto de los items técnicos `T` (que son deuda operativa, no de producto).
+
+- **Objetivo:** bajar de 5 a 4 series por ejercicio (1 de calentamiento + 3
+  efectivas al fallo; hoy son 4 efectivas) y que el aviso de "¿te costó / sube
+  el peso?" aparezca una sola vez por ejercicio —al cerrar la primera serie
+  efectiva, no en la segunda ni la tercera— con un texto que explique el
+  rango efectivo de 8 a 12 repeticiones en vez de solo preguntar.
+- **Por qué ahora:** pedido directo del dueño del repo.
+- **Toca:** `features/progress/components/SetTracker.tsx` (frecuencia y texto
+  del aviso), el conteo de series por ejercicio en los datos de rutinas
+  (`routine_exercises.target_sets` y donde corresponda —
+  `split_template_slots`, `shared_routine_exercises`—, ver hallazgo abajo),
+  `docs/progression.md`, `docs/`.
+- **No toca:** `services/progression.ts` (la regla 2-por-2 entre sesiones no
+  se toca sin una decisión aparte — ver hallazgo), el timer de descanso, el
+  toggle de calentamiento.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; en una sesión de
+  ejemplo, cada ejercicio con rutina muestra 1 calentamiento + 3 series
+  efectivas (4 en total); el aviso de dificultad aparece únicamente al
+  completar la **primera** serie efectiva de cada ejercicio, nunca en la
+  segunda ni la tercera; el texto explica el rango 8–12, qué hacer si llegó a
+  12 sin que le costara (subir peso), que la serie 8 ya debería costarle
+  bastante, y que 8 es el mínimo por debajo del cual el peso está muy alto.
+- **Depende de:** una decisión pendiente sobre cómo conviven el rango 8–12
+  en sesión y la regla 2-por-2 entre sesiones (`target_reps`) cuando una
+  rutina fija un objetivo de repeticiones fuera de ese rango — ver
+  "Hallazgos que cambian el plan" en `docs/estado.md`. **No se implementa
+  código hasta resolver esa pregunta.**
+- **Esfuerzo:** S.
+- **Riesgo:** dar dos señales contradictorias sobre cuándo subir peso (el
+  chequeo en sesión y la sugerencia de progresión entre sesiones), o cambiar
+  el conteo de series de rutinas ya guardadas de forma que se pierda de
+  vista qué series ya se habían hecho.
+
 ### Items técnicos (T)
 
 Deuda operativa que el dueño del repo agregó directamente, fuera de la

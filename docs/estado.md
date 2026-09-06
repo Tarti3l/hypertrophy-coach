@@ -23,8 +23,14 @@ empiece una sesión lo lee primero.
 
 Estados: `pendiente` · `en curso` · `en revisión` · `hecho` · `bloqueado`.
 
-Un item `en curso` tiene dueño: anotá cuál agente lo tomó, para que el otro no
-lo agarre en paralelo.
+Un item `en curso` tiene dueño: anotá cuál agente lo tomó y en qué worktree,
+para que el otro no lo agarre en paralelo.
+
+**Ventana de paralelismo.** Los items [4], [8] y [9] dependen solo del [3] y
+tocan módulos distintos (`training/`, `nutrition/`, `recovery/`). Una vez
+mergeado el [3], son los tres que se pueden repartir entre agentes a la vez.
+Todo lo demás es cadena: [2] → [3] → [4] → [5] → [6] → [7], y el [10] cierra.
+El protocolo está en `AGENTS.md`, sección "Trabajo en paralelo".
 
 ## Hallazgos que cambian el plan
 

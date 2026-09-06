@@ -21,6 +21,7 @@ empiece una sesión lo lee primero.
 | [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
+| [12] Ajustar el rango de series efectivas y el aviso de subir peso | bloqueado | | Agregado por el dueño del repo, fuera del plan de GPT-6. No se implementa hasta resolver cómo conviven el rango 8-12 en sesión y la regla 2-por-2 entre sesiones — ver Hallazgos |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
 | [T2] CI mínimo | hecho | #11 | Resuelto en branch `item-t2-ci` (Claude). `.github/workflows/typecheck.yml`: un solo job, `pnpm typecheck` en cada PR contra `main`, sin lint/build/deploy. No bloquea el merge por sí solo — falta marcarlo "required status check" en Settings → Branches, ajuste del repositorio que le queda al dueño. De paso corrige la regla de `docs/estado.md` en `AGENTS.md` (ver Hallazgos) |
 
@@ -116,6 +117,38 @@ entrada con fecha y de qué item salió.
   evitar que otro agente lo agarre en paralelo, no cierra el item. La regla
   anterior no lo dejaba explícito, y eso fue lo que dejó la fila del item [4]
   huérfana (en revisión, sin PR, con una nota de un bloqueo ya resuelto).
+- **2026-09-06, item [12]:** hay DOS mecanismos de progresión en el código,
+  documentados de forma desigual, que hoy pueden contradecirse:
+  1. **`services/progression.ts`** (documentado en `docs/progression.md`):
+     regla 2-por-2 de la NSCA, **entre sesiones**. Compara la última serie de
+     las dos sesiones anteriores contra `target_reps` (10 por defecto, o el
+     valor que fije la rutina — "ese valor manda", dice el propio documento).
+     Produce la sugerencia que se ve ANTES de registrar ("Toca subir peso",
+     "Punto de partida", etc.).
+  2. **`SetTracker.tsx`** (sin documentar en ningún lado): chequeo **dentro de
+     la misma sesión**, con `MIN_REPS = 8` y `REP_CEILING = 12` fijos en el
+     código, sin relación con `target_reps`. Al completar una serie efectiva
+     con 12+ reps pregunta "¿te costó?" y, si la respuesta es que podía hacer
+     más, sugiere subir el peso de las series que faltan de esa misma sesión.
+     El piso de 8 cita a Schoenfeld et al. (2021) en un comentario del código,
+     nunca en `docs/`.
+
+  **Contradicción concreta, ya observada en vivo:** la rutina cargada fija
+  `target_reps = 15` para "Apertura en máquina (pec deck)" (`Apunta a 15
+  reps`, visible en pantalla). El mecanismo 1 evaluaría la regla 2-por-2
+  contra 15+2=17. Pero el mecanismo 2 ignora ese 15 por completo: en cuanto
+  el socio llega a 12 reps —tres antes de su objetivo real— le pregunta si
+  "podía hacer más" y, si dice que sí, le dice que suba el peso, contra el
+  objetivo de 15 que la propia pantalla le está pidiendo dos líneas más
+  arriba. `docs/progression.md` dice "cuando el editor de rutinas permita
+  fijar `target_reps`, ese valor manda" — pero en el mecanismo 2 no manda.
+
+  **No corregido:** el dueño del repo pidió no tocar `docs/progression.md`
+  por cuenta propia; queda una decisión pendiente (¿el rango 8-12 debe
+  respetar `target_reps` cuando la rutina fija uno distinto, o es un techo/
+  piso que ninguna rutina debería pisar y entonces el dato de la rutina es el
+  que está mal?) antes de implementar el item [12] o de documentar el
+  mecanismo 2 en `docs/progression.md`.
 
 ## Preguntas abiertas
 
@@ -124,6 +157,12 @@ entrada con fecha y de qué item salió.
   Fuera del plan hasta resolverlo.
 - Distribución, participación de entrenadores, cantidad de usuarios y fecha
   objetivo. El plan no depende de ninguna.
+- **Rango 8-12 vs. `target_reps` de la rutina (item [12]):** cuando una
+  rutina fija un objetivo de repeticiones fuera de 8-12 (ej. 15, como
+  "Apertura en máquina (pec deck)"), ¿el chequeo de dificultad en sesión debe
+  respetar ese objetivo, o el rango 8-12 es un límite fijo y esos datos de
+  rutina son los que hay que corregir? Bloquea el item [12] y la
+  actualización de `docs/progression.md`. Ver Hallazgos.
 
 ## Para el próximo reporte a GPT-6
 

@@ -49,11 +49,24 @@ export function NutritionScreen() {
         <Text style={styles.description}>Tu meta no es comer perfecto: es darle a tu cuerpo suficiente energía para entrenar y recuperarse.</Text>
 
         <View style={styles.dashboard}>
-          <MacrosDashboard plan={macroPlan} consumed={daily.consumed} />
+          <MacrosDashboard
+            plan={macroPlan}
+            consumed={daily.consumed}
+            hasEntries={daily.entries.length > 0}
+            hasLoaded={daily.hasLoaded}
+            isLoading={daily.isLoading}
+            error={daily.error}
+            onRetry={daily.reload}
+          />
 
           <PrimaryButton label="Registrar comida" onPress={() => router.push('/log-meal')} />
 
-          <MealList entries={daily.entries} onDelete={(id) => { void deleteMealEntry(id).then(daily.reload).catch(() => undefined); }} />
+          <MealList
+            entries={daily.entries}
+            isInitialLoading={daily.isLoading && !daily.hasLoaded}
+            error={daily.error}
+            onDelete={(id) => { void deleteMealEntry(id).then(daily.reload).catch(() => undefined); }}
+          />
           <HydrationTracker plan={hydration.plan} isLoading={hydration.isLoading} error={hydration.error} onRetry={hydration.reload} />
         </View>
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { Eyebrow } from '@/components/ui/Eyebrow';
@@ -9,18 +9,41 @@ import { MealEntry, MEAL_TYPES } from '../types/nutrition';
 
 type MealListProps = {
   entries: MealEntry[];
+  isInitialLoading: boolean;
+  error: string | null;
   onDelete: (id: string) => void;
 };
 
-export function MealList({ entries, onDelete }: MealListProps) {
+export function MealList({ entries, isInitialLoading, error, onDelete }: MealListProps) {
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  if (error) {
+    return (
+      <Card>
+        <Eyebrow>Registros de hoy</Eyebrow>
+        <Text accessibilityLiveRegion="polite" style={styles.empty}>Tus comidas de hoy no están disponibles. Reintenta la consulta de consumos.</Text>
+      </Card>
+    );
+  }
+
+  if (isInitialLoading) {
+    return (
+      <Card>
+        <Eyebrow>Registros de hoy</Eyebrow>
+        <View accessibilityLiveRegion="polite" style={styles.loadingRow}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.empty}>Buscando tus comidas de hoy…</Text>
+        </View>
+      </Card>
+    );
+  }
+
   if (entries.length === 0) {
     return (
       <Card>
-        <Eyebrow>Hoy</Eyebrow>
+        <Eyebrow>Registros de hoy</Eyebrow>
         <Text style={styles.empty}>Todavía no registraste nada. Empieza por lo último que comiste.</Text>
       </Card>
     );
@@ -28,7 +51,7 @@ export function MealList({ entries, onDelete }: MealListProps) {
 
   return (
     <Card>
-      <Eyebrow>Hoy</Eyebrow>
+      <Eyebrow>Registros de hoy</Eyebrow>
       {MEAL_TYPES.map((meal) => {
         const group = entries.filter((entry) => entry.mealType === meal.value);
         if (group.length === 0) return null;
@@ -64,6 +87,7 @@ export function MealList({ entries, onDelete }: MealListProps) {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     empty: { ...type.small, color: colors.textMuted, marginTop: spacing.sm },
+    loadingRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
     group: { marginTop: spacing.md },
     groupTitle: { ...type.cardTitle, color: colors.text, marginBottom: spacing.xs },
     row: { alignItems: 'center', borderColor: colors.line, borderTopWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 56, paddingVertical: spacing.sm },

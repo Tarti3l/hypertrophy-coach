@@ -21,7 +21,7 @@ empiece una sesión lo lee primero.
 | [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
-| [T1] Dejar `pnpm typecheck` en verde | en curso | | Tomado por Claude en branch `item-t1-typecheck`. Agregado por el dueño del repo, fuera de la numeración de GPT-6 — ver `docs/plan.md` |
+| [T1] Dejar `pnpm typecheck` en verde | hecho | | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
 | [T2] CI mínimo | pendiente | | Depende de [T1]. **Bloqueado de acceso:** tocar `.github/workflows/` requiere el scope `workflow` en el token; avisar al dueño del repo al tomarlo, no bypassear |
 
 **Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
@@ -105,6 +105,11 @@ entrada con fecha y de qué item salió.
   botón "Reintentar", duplicándolo — se unificó en uno solo. Recuperación no
   tenía ninguna falla real (ya mostraba error único y no reseteaba a cero);
   no se tocó. Detalle completo en `docs/recorrido-minimo.md`, caso 6.
+- **2026-09-06, item [T1]:** causa confirmada de los 3 errores: un typo de
+  slug, no un problema de lógica. `weekPlan.check.ts` usaba `'abdomen'`, que
+  nunca existió en el enum `public.muscle_group` (las migraciones y
+  `MuscleGroupSlug` siempre usaron `'abs'`). Corregido reemplazando el literal
+  en las 3 apariciones; los 9 casos del check siguen en verde.
 
 ## Preguntas abiertas
 

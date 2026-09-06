@@ -18,7 +18,7 @@ empiece una sesión lo lee primero.
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Era un typo: `'abdomen'` por `'abs'` |
 | [T2] CI mínimo | hecho | #11 | Corre typecheck en cada PR. No bloquea el merge: los rulesets no se aplican en repos privados del plan gratuito |
 | [12] Rango de series efectivas y aviso de subir peso | hecho | #12 | 8-12 fijo, 3 series efectivas, aviso una vez por ejercicio. Migraciones 00021 y 00022 |
-| [19] Partir la pantalla de entrenamiento en dos modos | pendiente | | **Va primero.** Reestructura `ActiveWorkoutScreen`, que después tocan [13], [8] y [9] |
+| [19] Partir la pantalla de entrenamiento en dos modos | en curso | | Tomado por Claude en branch `item-19-modo-ejercicio` (creada sobre `replan-reporte-2`, PR #13, todavía sin mergear — esta branch depende de esa). **Va primero.** Reestructura `ActiveWorkoutScreen`, que después tocan [13], [8] y [9] |
 | [13] Resolver la primera sesión sin historial | pendiente | | Punto de abandono más probable de la app |
 | [14] Entrenar entero sin conexión | pendiente | | El más grande (M) |
 | [15] Cerrar la sincronización de sesiones offline | pendiente | | |

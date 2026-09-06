@@ -253,10 +253,12 @@ export function SetTracker({
               <View style={styles.prompt}>
                 <Text style={styles.promptTitle}>Cuántas repeticiones buscar</Text>
                 <Text style={styles.promptBody}>Entre {MIN_REPS} y {REP_CEILING} por serie.</Text>
+                <Text style={styles.promptBody}>Alrededor de la {MIN_REPS} ya te debería costar bastante.</Text>
                 <Text style={styles.promptBody}>
                   Si llegas a {REP_CEILING} y sientes que podías hacer más, el peso está bajo: súbelo en la
                   próxima serie.
                 </Text>
+                <Text style={styles.promptBody}>Si no llegas a {MIN_REPS}, está muy alto: bájalo.</Text>
                 {guidanceReachedCeiling ? (
                   <>
                     <Text style={styles.promptBody}>¿Esta serie te costó?</Text>
@@ -297,7 +299,7 @@ export function SetTracker({
                 <Text style={styles.promptBody}>
                   {repVerdict.couldDoMore
                     ? `Si pasas de ${REP_CEILING} sin que cueste, la serie se queda lejos del fallo y el estímulo se pierde. Sube en la siguiente.`
-                    : `Perfecto. Cuando llegar a ${REP_CEILING} deje de costarte, ahí toca subir.`}
+                    : `Perfecto. Cuando ${REP_CEILING} deje de costarte, ahí toca subir.`}
                 </Text>
                 {repVerdict.couldDoMore && requiresWeight && hasWeight && weight > 0 ? (
                   <Pressable

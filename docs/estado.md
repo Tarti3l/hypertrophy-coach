@@ -12,7 +12,7 @@ empiece una sesión lo lee primero.
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
-| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | pendiente | | Sale del hallazgo del [2]. Diagnóstico + arreglo localizado; un cambio estructural se presenta para aprobación, no se ejecuta |
+| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | en curso | | Tomado por Claude en branch `item-3-persistencia`. Sale del hallazgo del [2]. Diagnóstico + arreglo localizado; un cambio estructural se presenta para aprobación, no se ejecuta |
 | [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
 | [5] Corregir los estados de desconexión | pendiente | | |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |

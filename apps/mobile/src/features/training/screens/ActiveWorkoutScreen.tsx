@@ -147,7 +147,10 @@ export function ActiveWorkoutScreen() {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const exerciseIds = useMemo(() => activeExercises.map((exercise) => exercise.id), [activeExercises]);
-  const session = useWorkoutSession(exerciseIds, setsByExerciseId);
+  // Identifica la sesión para recuperar su borrador tras cerrar y reabrir la app. Sin
+  // rutina (sesión libre) no hay borrador que restaurar, igual que antes de este cambio.
+  const sessionKey = routineId ? `${routineId}:${dayIndex}` : null;
+  const session = useWorkoutSession(exerciseIds, setsByExerciseId, sessionKey);
 
   const rest = useRestTimer();
   /** Duración con la que arrancó el contador: sin esto la barra de progreso miente. */

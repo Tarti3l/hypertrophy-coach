@@ -15,7 +15,7 @@ function check(name: string, actual: unknown, expected: unknown) {
 const G: [MuscleGroupSlug, boolean, number, number][] = [
   ['pecho', false, 1, 3], ['espalda', false, 1, 3], ['hombros', false, 1, 3], ['gluteos', false, 1, 3],
   ['biceps', false, 2, 2], ['triceps', false, 2, 2], ['cuadriceps', false, 2, 2], ['femorales', false, 2, 2],
-  ['abdomen', true, 2, 1], ['antebrazo', true, 3, 1], ['pantorrilla', true, 3, 1]
+  ['abs', true, 2, 1], ['antebrazo', true, 3, 1], ['pantorrilla', true, 3, 1]
 ];
 const groups = G.map(([slug, isSmall, aestheticPriority, minExercises]) => ({
   slug, name: slug, displayOrder: 1,
@@ -31,7 +31,7 @@ const d = (dayIndex: number, dayKind: 'torso' | 'pierna', focusGroups: MuscleGro
 const RECOMENDADO: WeekPlanDay[] = [
   d(1, 'torso', ['pecho', 'hombros']),
   d(2, 'pierna', ['cuadriceps', 'gluteos', 'pantorrilla']),
-  d(3, 'torso', ['espalda', 'abdomen']),
+  d(3, 'torso', ['espalda', 'abs']),
   d(4, 'torso', ['biceps', 'triceps', 'antebrazo']),
   d(5, 'pierna', ['femorales', 'gluteos'])
 ];
@@ -77,7 +77,7 @@ check('pierna en D2 y D5 no avisa', titles(RECOMENDADO).some((t) => t.includes('
 console.log('\n7. Cobertura — musculos que se quedan fuera de la semana');
 check('quitar pantorrilla se avisa', titles([
   d(1, 'torso', ['pecho', 'hombros']), d(2, 'pierna', ['cuadriceps', 'gluteos']),
-  d(3, 'torso', ['espalda', 'abdomen']), d(4, 'torso', ['biceps', 'triceps', 'antebrazo']),
+  d(3, 'torso', ['espalda', 'abs']), d(4, 'torso', ['biceps', 'triceps', 'antebrazo']),
   d(5, 'pierna', ['femorales', 'gluteos'])
 ]).some((t) => t.includes('sin entrenar')), true);
 

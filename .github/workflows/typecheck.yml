@@ -1,0 +1,33 @@
+name: Typecheck
+
+# Único check de CI a propósito (item [T2] de docs/plan.md): sin lint, sin build,
+# sin deploy. Cualquier otro check se agrega en un item aparte, no acá.
+on:
+  pull_request:
+    branches: [main]
+
+# Cancela la corrida vieja si llega un push nuevo al mismo PR, para no acumular
+# corridas obsoletas y mantener el check rápido.
+concurrency:
+  group: typecheck-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck

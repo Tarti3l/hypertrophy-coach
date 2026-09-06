@@ -73,7 +73,13 @@ rutinas compartidas, regiones musculares, series de calentamiento.
 
 **Próximos hitos declarados en el README:** notificaciones inteligentes, media
 remota de ejercicios, entitlements de suscripción; después sync de producción
-con Supabase y operación de contenido.
+con Supabase y operación de contenido. Ojo: el de suscripción ya no aplica (ver
+más abajo).
+
+**Infraestructura ya resuelta, no la incluyas en el plan:** el repo está bajo git
+con remoto privado en GitHub, hay un hook que impide commitear sobre `main`, y
+`AGENTS.md` en la raíz ya lleva las reglas permanentes para los agentes. No hay
+CI configurado todavía.
 
 ## EL CONTEXTO REAL
 

@@ -10,39 +10,47 @@ empiece una sesión lo lee primero.
 
 | Item | Estado | PR | Nota |
 | --- | --- | --- | --- |
-| [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
-| [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
-| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | #6 | Resuelto en branch `item-3-persistencia` (Claude). Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Verificado también en nativo (iPhone real, Expo Go). Detalle en `docs/recorrido-minimo.md` (caso 5) |
-| [4] Sustituir los consumos ficticios por los registros reales | en revisión | | Implementado en `item-4-Codex`: consumos desde `meal_entries`, con estados de carga, vacío confirmado e indisponibilidad. `pnpm typecheck` está bloqueado por errores preexistentes de `scripts/checks/weekPlan.check.ts`, fuera de este item |
-| [5] Corregir los estados de desconexión | hecho | #7 | Resuelto en branch `item-5-offline` (Claude). Recuperación ya estaba correcta (sin cambios); Inicio y `training/active` sí tenían fallas reales. Detalle en `docs/recorrido-minimo.md` (caso 6) |
-| [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |
-| [7] Priorizar elegir una rutina existente | pendiente | | Hay rutinas cargadas; confirmar cuáles sirven para alguien que arranca de cero |
-| [8] Prellenar la siguiente serie y confirmarla | pendiente | | Absorbe el auto-inicio del descanso, que ya funciona: solo hay que no romperlo |
-| [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
+| [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | |
+| [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | `docs/recorrido-minimo.md`; 4/6 casos OK |
+| [3] Corregir la pérdida de series de la sesión activa | hecho | #6 | Verificado en iPhone real: funciona en nativo |
+| [4] Sustituir los consumos ficticios por los registros reales | en revisión | #8 | Falta verificación en dispositivo: registrar comida, ver totales, recargar |
+| [5] Corregir los estados de desconexión | hecho | #7 | |
+| [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Era un typo: `'abdomen'` por `'abs'` |
+| [T2] CI mínimo | hecho | #11 | Corre typecheck en cada PR. No bloquea el merge: los rulesets no se aplican en repos privados del plan gratuito |
+| [12] Rango de series efectivas y aviso de subir peso | hecho | #12 | 8-12 fijo, 3 series efectivas, aviso una vez por ejercicio. Migraciones 00021 y 00022 |
+| [19] Partir la pantalla de entrenamiento en dos modos | pendiente | | **Va primero.** Reestructura `ActiveWorkoutScreen`, que después tocan [13], [8] y [9] |
+| [13] Resolver la primera sesión sin historial | pendiente | | Punto de abandono más probable de la app |
+| [14] Entrenar entero sin conexión | pendiente | | El más grande (M) |
+| [15] Cerrar la sincronización de sesiones offline | pendiente | | |
+| [6] Convertir la ruta inicial en «Hoy» | pendiente | | M: cinco módulos |
+| [7] Priorizar elegir una rutina existente | pendiente | | Confirmar qué rutinas cargadas sirven para principiantes |
+| [8] Prellenar la siguiente serie | pendiente | | |
+| [9] Mostrar la próxima serie durante el descanso | pendiente | | Reemplaza la presentación que preveía el antiguo [9] |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
-| [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
-| [12] Ajustar el rango de series efectivas y el aviso de subir peso | hecho | #12 | Resuelto en branch `item-12-rango-efectivo` (Claude): reps fijas en 8-12, series fijas en 3, aviso una sola vez con texto final. Detalle completo en Hallazgos, `docs/progression.md` y `docs/rutinas.md` §1.1 |
-| [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
-| [T2] CI mínimo | hecho | #11 | Resuelto en branch `item-t2-ci` (Claude). `.github/workflows/typecheck.yml`: un solo job, `pnpm typecheck` en cada PR contra `main`, sin lint/build/deploy. No bloquea el merge por sí solo — falta marcarlo "required status check" en Settings → Branches, ajuste del repositorio que le queda al dueño. De paso corrige la regla de `docs/estado.md` en `AGENTS.md` (ver Hallazgos) |
+| [16] Reemplazar el catálogo por la TPCA 2023 | pendiente | | M: ~2.900 filas. Fuente en `docs/fuentes/` |
+| [17] Incorporar porciones medidas | bloqueado | | **Bloqueado por el dueño**: hay que pesar porciones reales con balanza. Ningún agente puede producir ese dato |
+| [18] Seguimiento de peso corporal | pendiente | | |
+| [11] Verificar el recorrido integrado en web y en iPhone | pendiente | | Cierra la tanda |
 
-**Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
-de comida en dos toques) ya están implementados. No son trabajo de desarrollo:
-sobreviven solo como verificación dentro del [11].
+**Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo de
+comida en dos toques) ya están implementados. Sobreviven solo como verificación
+dentro del [11].
+
+**Orden de ejecución.** La cadena principal es
+[19] → [13] → [14] → [15] → [6] → [7] → [8] → [9], con [10] colgando de [5] y [6],
+y el [11] cerrando. Los items **[16]** y **[18]** dependen solo del [4] y son
+independientes de toda esa cadena.
 
 Estados: `pendiente` · `en curso` · `en revisión` · `hecho` · `bloqueado`.
 
 Un item `en curso` tiene dueño: anotá cuál agente lo tomó y en qué worktree,
 para que el otro no lo agarre en paralelo.
 
-**Ventana de paralelismo — abierta ahora.** Los items [3] y [4] dependen solo
-del [2], que está hecho, y tocan módulos distintos: el [3] va a
-`features/progress/` y `features/training/`; el [4] a `features/nutrition/`.
-Son los dos que se pueden repartir entre dos agentes en este momento, cada uno
-en su worktree.
-
-Después de eso el plan vuelve a ser cadena: [5] → [6] → [7] → [8] → [9], con el
-[10] colgando de [5] y [6], y el [11] cerrando. El protocolo de worktrees está
-en `AGENTS.md`, sección "Trabajo en paralelo".
+**Ventana de paralelismo — abierta ahora.** El **[16]** (catálogo TPCA) y el
+**[18]** (peso corporal) dependen solo del [4] y tocan `features/nutrition/`. La
+cadena de entrenamiento ([19] → [13] → [14] → [15] → [6]…) toca `features/training/`
+y `features/progress/`. Son dos frentes que no se pisan: uno para cada agente, cada
+uno en su worktree. El protocolo está en `AGENTS.md`, sección "Trabajo en paralelo".
 
 ## Hallazgos que cambian el plan
 
@@ -220,6 +228,7 @@ entrada con fecha y de qué item salió.
 GPT-6 no ve el repo: se entera de lo que pasa solo por lo que le peguen acá.
 Acumulá en esta sección lo que haya que contarle, y vaciala después de reportar.
 
-- Reporte #1 entregado el 2026-09-06 (items [1] y [2], los dos bugs y los
-  hallazgos incidentales). Devolvió el replan de los items [3] a [11], ya
-  aplicado en `docs/plan.md`. Nada pendiente de reportar por ahora.
+- Reporte #2 entregado el 2026-09-06 (los cinco cambios nuevos del dueño más el
+  detalle verificado de la TPCA). Devolvió los items [13] a [18], ya aplicados.
+- Pendiente de contarle en el próximo reporte: el item [19], que salió después del
+  replan y va primero de la fila.

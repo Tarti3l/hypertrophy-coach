@@ -28,8 +28,9 @@ The app is used on a phone before or around gym sessions and at home. The curren
 
 ## Capabilities and Constraints
 
-- Freemium mobile product; paid-entitlement enforcement is a later module.
+- Free product for this adaptation; subscription tiers and entitlement enforcement are not planned work.
 - First release supports iOS and Android with an offline-first onboarding draft.
+- Distribution, trainer/coach participation, target user scale, and a launch date are explicitly undefined and out of scope for this adaptation.
 - The macro result is an educational estimate, not a diagnosis, treatment plan, or medical advice.
 - Exact date of birth is intentionally not collected in onboarding; only age is needed for this estimate.
 - Assumption: onboarding is available to users aged 14+; legal age gating and regional privacy policy are open product decisions.

@@ -10,8 +10,8 @@ Implementado en `apps/mobile/src/features/training/services/progression.ts`.
 Dos detalles que la implementación respeta y que es fácil equivocar:
 
 1. **La última serie, no la primera.** La primera serie siempre sale mejor porque no hay
-   fatiga acumulada; usarla como criterio haría subir peso antes de tiempo. Hay una prueba
-   automatizada específica para esto.
+   fatiga acumulada; usarla como criterio haría subir peso antes de tiempo. Es uno de los
+   casos límite a comprobar a mano (ver Verificación).
 2. **Dos sesiones consecutivas, no una.** Un buen día no es progreso.
 
 ## Cuánto subir
@@ -46,9 +46,10 @@ Objetivo por defecto: 10 repeticiones. Cuando el editor de rutinas permita fijar
 
 ## Verificación
 
-`progression.ts` tiene 10 pruebas que cubren los casos límite: que se mire la última
-serie y no la primera, que una sola sesión buena no dispare la subida, el tope del 10 %
-en cargas ligeras y el piso de 0.5 kg. Todas pasan.
+No hay pruebas automatizadas para `progression.ts`: `apps/mobile/package.json` no define
+un test runner. La verificación de los casos límite —que se mire la última serie y no la
+primera, que una sola sesión buena no dispare la subida, el tope del 10 % en cargas
+ligeras y el piso de 0.5 kg— es manual.
 
 ## Fuentes
 

@@ -150,7 +150,11 @@ clave que usa AsyncStorage en Expo Web): con `startedAt` de hace 10 h, la
 sesión arranca en blanco y el borrador viejo se sobreescribe; con `startedAt`
 de hace 2 h, se restaura igual que antes del cambio.
 
-## 6. Abrir sin conexión — FALLA (parcial)
+## 6. Abrir sin conexión — CORREGIDO (item [5])
+
+**Estado:** corregido y reverificado a mano en Expo Web contra Supabase real
+(2026-09-06), interceptando `fetch` como se describe abajo. Repro original,
+seguido de causa y arreglo.
 
 **Cómo se simuló:** no hay forma de cortar la conectividad real del
 dispositivo desde esta herramienta de prueba. Se interceptó `window.fetch` en
@@ -165,7 +169,7 @@ es una simulación a nivel de página, no un corte de red del sistema operativo.
   y después caen a un estado de error claro: "No pudimos cargar tu historial.
   Revisa tu conexión e inténtalo de nuevo." con botón "Reintentar". Correcto,
   aunque de fondo los contadores se resetean a 0 en vez de mantener el último
-  valor conocido.
+  valor conocido — **corregido, ver "Causa y arreglo" abajo.**
 - **Recuperación:** mismo patrón — "Sueño de anoche" carga, después muestra
   "No pudimos cargar tu registro de sueño..." con "Reintentar". Correcto.
 - **Entrenamiento:** contenido educativo estático, no depende de red. Sin
@@ -174,7 +178,7 @@ es una simulación a nivel de página, no un corte de red del sistema operativo.
   punto 4), así que no dispara ningún error visible sin conexión — no es que
   maneje bien el caso offline, es que no llega a necesitar red para esa
   pantalla.
-- **Empezar entrenamiento (`training/active`) — FALLA:** al iniciar una sesión
+- **Empezar entrenamiento (`training/active`) — FALLA (corregido, ver abajo):** al iniciar una sesión
   sin conexión, la pantalla queda en blanco (sin título ni contenido) y
   muestra **dos** mensajes duplicados "No pudimos conectar con el servidor.
   Revisa tu conexión e inténtalo otra vez." con dos botones "Reintentar"
@@ -184,3 +188,52 @@ es una simulación a nivel de página, no un corte de red del sistema operativo.
 **Plataforma y condiciones:** Expo Web / Chrome, `localhost:8081`,
 interceptando `fetch` a nivel de página como se describe arriba. No probado en
 nativo.
+
+### Causa (item [5])
+
+Dos causas independientes, cada una en su pantalla:
+
+- **Inicio — "0" en vez de "sin datos":** `useProgressSummary`
+  (`apps/mobile/src/features/progress/hooks/useProgressSummary.ts`) nunca
+  resetea sus datos al fallar un refetch (eso ya funcionaba bien: la racha en
+  caliente sí se conservaba). El problema era el arranque en frío: si la
+  primera carga de la sesión falla sin conexión, `serverDates` nunca sale de
+  `[]`, así que la racha calcula `0` y "esta semana" cuenta `0` — indistinguible
+  de "el socio realmente no entrenó". `StreakBadge` y `WeeklyCalendar` no tenían
+  forma de expresar "no sabemos" aparte de mostrar el número en cero.
+  Hallazgo adicional en la misma pantalla: la tarjeta "Tu próxima sesión" no
+  miraba el `error` de `useRoutines` — si fallaba por desconexión, con
+  `routines.length === 0` ofrecía "Armar mi rutina" como si el socio no tuviera
+  ninguna, en vez de avisar que no se pudo comprobar.
+- **`training/active` — pantalla en blanco con avisos duplicados:**
+  `catalogError` (ejercicios) y `routineError` (rutina) son dos estados
+  independientes que, sin red, fallan a la vez con el mismo mensaje genérico
+  ("No pudimos conectar con el servidor…", vía `describeSupabaseError`). El
+  texto solo mostraba uno (`catalogError ?? routineError`), pero cada error
+  dibujaba su propio botón "Reintentar" por separado, así que aparecían dos
+  apilados sin que nada los distinguiera.
+
+### Arreglo (item [5])
+
+- `useProgressSummary` suma un flag `hasData` (hubo una carga exitosa alguna
+  vez, o hay algo en la cola local de sincronización). `HomeScreen` lo usa para
+  decidir si `error` significa "sin datos disponibles" (nunca hubo nada que
+  mostrar) en vez de "conservar el último valor" (ya había datos y el refetch
+  falló). `StreakBadge` y `WeeklyCalendar` reciben un prop `unavailable` nuevo
+  y muestran el texto en vez del número cuando corresponde.
+- `HomeScreen` ahora sí mira el `error` de `useRoutines`: si falló y no hay
+  rutinas conocidas, la tarjeta dice "No pudimos comprobar tu rutina. Revisa tu
+  conexión." con un botón "Reintentar" — nunca ofrece crear una rutina nueva
+  solo porque no se pudo confirmar que ya existía una.
+- `ActiveWorkoutScreen` reemplaza los dos botones "Reintentar" independientes
+  por uno solo, que reintenta lo que haya fallado (catálogo, rutina, o ambos).
+  `Volver` seguía disponible desde antes.
+
+**Reverificado (2026-09-06):** con la racha y rutina ya cargadas, forzar un
+refetch sin conexión conserva "2 días" y "2 sesiones" (comportamiento previo,
+sin cambios). Con un arranque en frío sin conexión (nunca hubo una carga
+exitosa), racha y "esta semana" muestran "Sin datos disponibles" y la tarjeta
+de rutina dice "No pudimos comprobar tu rutina" con "Reintentar" en vez de
+"Armar mi rutina". En `training/active` sin conexión aparece un único aviso
+con un único "Reintentar"; al reconectar y reintentar, carga la rutina real
+sin pantalla en blanco ni duplicados.

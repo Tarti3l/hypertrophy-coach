@@ -307,13 +307,17 @@ export function ActiveWorkoutScreen() {
                   ? 'Ninguno de los ejercicios de este día sigue disponible. Abre tu rutina y reemplázalos.'
                   : 'Todavía no hay ejercicios publicados en el catálogo.')}
               </Text>
-              {catalogError ? (
-                <Pressable accessibilityRole="button" onPress={reloadCatalog} style={styles.textButton}>
-                  <Text style={styles.textButtonText}>Reintentar</Text>
-                </Pressable>
-              ) : null}
-              {routineError ? (
-                <Pressable accessibilityRole="button" onPress={() => setRoutineReloadToken((value) => value + 1)} style={styles.textButton}>
+              {blockingError ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    // Los dos fallan por la misma causa (sin red): un solo toque reintenta
+                    // los que hagan falta, en vez de mostrar un botón por cada fuente.
+                    if (catalogError) reloadCatalog();
+                    if (routineError) setRoutineReloadToken((value) => value + 1);
+                  }}
+                  style={styles.textButton}
+                >
                   <Text style={styles.textButtonText}>Reintentar</Text>
                 </Pressable>
               ) : null}

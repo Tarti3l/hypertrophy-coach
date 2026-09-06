@@ -12,7 +12,7 @@ empiece una sesión lo lee primero.
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
-| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | | Resuelto en branch `item-3-persistencia` (Claude), sin PR abierto todavía. Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Detalle en `docs/recorrido-minimo.md` (caso 5) |
+| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | #6 | Resuelto en branch `item-3-persistencia` (Claude). Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Detalle en `docs/recorrido-minimo.md` (caso 5) |
 | [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
 | [5] Corregir los estados de desconexión | pendiente | | |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |

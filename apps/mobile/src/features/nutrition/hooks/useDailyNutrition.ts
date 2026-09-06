@@ -11,6 +11,7 @@ type DailyNutritionState = {
   frequent: MealEntry[];
   consumed: DailyMacroConsumption;
   isLoading: boolean;
+  hasLoaded: boolean;
   error: string | null;
   reload: () => void;
 };
@@ -19,6 +20,7 @@ export function useDailyNutrition(): DailyNutritionState {
   const [entries, setEntries] = useState<MealEntry[]>([]);
   const [frequent, setFrequent] = useState<MealEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
@@ -26,11 +28,16 @@ export function useDailyNutrition(): DailyNutritionState {
     setIsLoading(true);
     setError(null);
     try {
-      const [today, repeats] = await Promise.all([getDayEntries(), getFrequentEntries()]);
+      const today = await getDayEntries();
       if (!isMountedRef.current) return;
 
       setEntries(today);
-      setFrequent(repeats);
+      setHasLoaded(true);
+
+      // Los atajos no deben decidir si podemos mostrar el consumo real de hoy.
+      void getFrequentEntries()
+        .then((repeats) => { if (isMountedRef.current) setFrequent(repeats); })
+        .catch(() => undefined);
     } catch {
       if (!isMountedRef.current) return;
       setError('No pudimos cargar tus comidas de hoy. Revisa tu conexión e inténtalo de nuevo.');
@@ -50,6 +57,7 @@ export function useDailyNutrition(): DailyNutritionState {
     frequent,
     consumed: entries.length > 0 ? sumEntries(entries) : EMPTY,
     isLoading,
+    hasLoaded,
     error,
     reload: () => void load()
   };

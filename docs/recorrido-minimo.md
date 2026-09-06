@@ -56,8 +56,9 @@ item, pero condiciona cualquier trabajo futuro sobre ese dashboard.
 
 ## 5. Cerrar y reabrir la app — CORREGIDO (item [3])
 
-**Estado:** corregido y reverificado a mano en Expo Web contra Supabase real
-(2026-09-06). Repro original abajo, seguido de causa y arreglo.
+**Estado:** corregido y reverificado a mano en Expo Web contra Supabase real y
+en nativo (iPhone real vía Expo Go) (2026-09-06). Repro original abajo,
+seguido de causa, arreglo y las dos reverificaciones.
 
 **Pasos:**
 1. Empezar sesión con "La rutina para estar como cbum", día 1.
@@ -79,12 +80,11 @@ Inicio):**
   no es solo que la sesión no se retome visualmente, el dato no quedó en un
   lugar recuperable.
 
-**Plataforma y condiciones:** Expo Web / Chrome, `localhost:8081`, contra
-Supabase real (se confirmó que el backend seguía arriba y respondía). No se
-probó en nativo — puede ser un artefacto de cómo se persiste el estado de
-sesión en la capa web, o un problema real de la capa de datos que también
-afecta nativo. Se registra como hallazgo, no se diagnosticó la causa (fuera de
-alcance de este item; ver `docs/estado.md`).
+**Plataforma y condiciones (repro original):** Expo Web / Chrome,
+`localhost:8081`, contra Supabase real (se confirmó que el backend seguía
+arriba y respondía). Se registra como hallazgo, no se diagnosticó la causa en
+ese momento (fuera de alcance del item [2]; ver `docs/estado.md`). Nativo
+verificado después del arreglo — ver "Verificado en nativo" más abajo.
 
 ### Causa (item [3])
 
@@ -130,6 +130,15 @@ los mismos valores; una segunda recarga no duplica nada; "Finalizar
 entrenamiento" guarda normalmente, el ejercicio aparece en Progreso ("Ya
 tienes tu primer registro") y la racha/semana de Inicio suben igual que
 antes.
+
+### Verificado en nativo (2026-09-06)
+
+Probado por el dueño del repo en un iPhone real, con Expo Go apuntando al
+servidor de desarrollo (no Expo Web). Pasos: confirmar dos series, cerrar la
+app por completo sacándola del multitarea (no solo pasarla a segundo plano),
+volver a entrar a la misma rutina y mismo día → muestra 2/5. El arreglo
+descrito arriba (borrador en AsyncStorage) funciona igual en nativo que en
+Expo Web — no era un artefacto de la capa web.
 
 ### Vencimiento del borrador (revisión de PR, 2026-09-06)
 

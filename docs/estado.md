@@ -12,7 +12,7 @@ empiece una sesión lo lee primero.
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
-| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | #6 | Resuelto en branch `item-3-persistencia` (Claude). Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Detalle en `docs/recorrido-minimo.md` (caso 5) |
+| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | #6 | Resuelto en branch `item-3-persistencia` (Claude). Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Verificado también en nativo (iPhone real, Expo Go). Detalle en `docs/recorrido-minimo.md` (caso 5) |
 | [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
 | [5] Corregir los estados de desconexión | hecho | | Resuelto en branch `item-5-offline` (Claude). Recuperación ya estaba correcta (sin cambios); Inicio y `training/active` sí tenían fallas reales. Detalle en `docs/recorrido-minimo.md` (caso 6) |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |
@@ -85,6 +85,12 @@ entrada con fecha y de qué item salió.
   type 'MuscleGroupSlug'`, líneas 18, 34 y 80), ya presentes en `main` antes de
   este item — confirmado corriendo el mismo comando con `git stash`. No los
   causó ningún trabajo de este plan.
+- **2026-09-06, item [3]:** verificado en nativo por el dueño del repo (iPhone
+  real, Expo Go contra el servidor de desarrollo): confirmar dos series,
+  cerrar la app por completo (fuera del multitarea) y volver a entrar a la
+  misma rutina y día conserva 2/5. El arreglo del borrador en AsyncStorage no
+  era un artefacto de Expo Web — funciona igual en nativo. Se retira la
+  advertencia de "no probado en nativo" para este caso.
 - **2026-09-06, item [5]:** dos causas independientes detrás del caso 6 del
   item [2]. En Inicio, un arranque en frío sin conexión (nunca hubo una carga
   exitosa) mostraba racha y "esta semana" en 0, indistinguible de "no

@@ -179,7 +179,22 @@ entrada con fecha y de qué item salió.
     `00022_fix_target_sets_range.sql` (templates compartidos completos + la
     rutina personal del dueño, no rutinas de otros usuarios) y verificado por
     consulta directa: los 68 slots y las 27 filas ya están en 3. Documentado
-    con su costo conocido (menos volumen semanal) en `docs/rutinas.md` §1.1.
+    con su costo conocido (menos volumen semanal, priorizado por adherencia,
+    no como si fuera gratis) en `docs/rutinas.md` §1.1.
+  - **Ojo, dato real:** "La rutina para estar como cbum" es la rutina real del
+    dueño del repo, con la que viene entrenando — no un fixture de prueba
+    armado para QA. La migración le tocó datos reales de uso, a pedido
+    explícito, con el routine_id acotado en el `where`.
+  - **Pregunta abierta, sin resolver:** ¿hay otros usuarios con rutinas
+    propias en la base, y cuántos? `routine_exercises`/`routines` están
+    protegidas por RLS por usuario — ni con la clave publicable ni
+    autenticado como este usuario se puede leer o contar filas de otra
+    persona, y así debe ser. No hay una vía para obtener ese número sin
+    acceso al panel de Supabase (Table Editor / Auth) o una `service_role`
+    key, que el proyecto deliberadamente no expone (`.env.example`: "Nunca
+    uses service_role en la app"). Si hace falta el número, lo tiene que
+    mirar el dueño del repo directamente, o autorizar puntualmente una
+    consulta con esa clave. No se tocó ninguna rutina ajena mientras tanto.
 
 ## Preguntas abiertas
 
@@ -188,12 +203,17 @@ entrada con fecha y de qué item salió.
   Fuera del plan hasta resolverlo.
 - Distribución, participación de entrenadores, cantidad de usuarios y fecha
   objetivo. El plan no depende de ninguna.
-- **Rango 8-12 vs. `target_reps` de la rutina (item [12]):** cuando una
-  rutina fija un objetivo de repeticiones fuera de 8-12 (ej. 15, como
-  "Apertura en máquina (pec deck)"), ¿el chequeo de dificultad en sesión debe
-  respetar ese objetivo, o el rango 8-12 es un límite fijo y esos datos de
-  rutina son los que hay que corregir? Bloquea el item [12] y la
-  actualización de `docs/progression.md`. Ver Hallazgos.
+- ~~Rango 8-12 vs. `target_reps` de la rutina (item [12])~~ — resuelto:
+  8-12 es fijo, se corrigen los datos que no encajan. Ver Hallazgos y
+  `docs/progression.md`.
+- **Cuántos usuarios tienen rutinas propias (item [12]):** al fijar
+  `target_sets` en 3 se corrigió la rutina personal del dueño del repo, pero
+  no se pudo averiguar si hay otras personas con rutinas armadas ni cuántas
+  — `routine_exercises`/`routines` están protegidas por RLS y no hay una vía
+  sin panel de Supabase o una `service_role` key para contarlas. Si hay
+  otros usuarios con rutinas que quedaron con `target_sets` fuera de 3 (o
+  `default_reps` fuera de 8-12, del hallazgo anterior), siguen así hasta que
+  el dueño del repo confirme el número y autorice tocarlas.
 
 ## Para el próximo reporte a GPT-6
 

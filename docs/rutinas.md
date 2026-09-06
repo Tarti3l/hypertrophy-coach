@@ -82,17 +82,25 @@ por ejercicio que tiene que recordar o adivinar.
 **El costo es real y es este documento el que lo dice:** §1 arriba muestra que
 el volumen semanal es el motor principal de la hipertrofia. Un ejercicio que
 antes aportaba 4 series ahora aporta 3 — menos volumen para el grupo muscular
-que entrena, no un cambio neutro. Lo elegimos igual porque:
+que entrena, no un cambio neutro.
 
-- El rango de principiante que la app ya usa (6-10 series semanales por grupo,
-  tabla de arriba) es **deliberadamente conservador y está muy por debajo del
-  techo** a propósito: a este nivel el factor limitante es la adherencia, no
-  la dosis, y "un principiante gana con casi cualquier estímulo" (mismo
-  párrafo). Perder 1 serie por ejercicio no saca a la mayoría de las rutinas
-  de ese rango — las corre hacia el extremo bajo, no las tira fuera de él.
-- Es exactamente la misma prioridad que ya justificó el rango 8-12 fijo:
-  simplicidad para quien recién empieza, por encima de exprimir cada variable
-  por separado.
+Se elige igual por una razón de adherencia, no fisiológica: **para un
+principiante, una sesión más corta que se completa vale más que una más larga
+que se abandona.** El costo no desaparece por eso — se prioriza a propósito la
+variable que más determina el resultado en la práctica (seguir entrenando)
+sobre la que más lo determina en el papel (el volumen exacto de cada sesión).
+
+Esto es consistente con lo que ya dice §1: el rango de principiante que usa la
+app (6-10 series semanales por grupo, tabla de arriba) es **deliberadamente
+conservador y está muy por debajo del techo** a propósito, porque a este nivel
+el factor limitante es la adherencia, no la dosis. Perder 1 serie por
+ejercicio corre la mayoría de las rutinas hacia el extremo bajo de ese
+rango — no las saca de él, pero es un movimiento real dentro del rango, no un
+ajuste neutro.
+
+Es la misma prioridad que ya justificó el rango 8-12 fijo (`docs/progression.md`):
+simplicidad para quien recién empieza, por encima de exprimir cada variable
+por separado.
 
 **No es una garantía de volumen.** Un ejercicio que era el único estímulo
 directo de un grupo muscular en la semana puede quedar por debajo de las 6

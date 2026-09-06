@@ -14,7 +14,7 @@ empiece una sesión lo lee primero.
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
 | [3] Diagnosticar y corregir la pérdida de series de la sesión activa | hecho | #6 | Resuelto en branch `item-3-persistencia` (Claude). Arreglo localizado (borrador local con AsyncStorage), no hizo falta cambio estructural. Verificado también en nativo (iPhone real, Expo Go). Detalle en `docs/recorrido-minimo.md` (caso 5) |
 | [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
-| [5] Corregir los estados de desconexión | hecho | | Resuelto en branch `item-5-offline` (Claude). Recuperación ya estaba correcta (sin cambios); Inicio y `training/active` sí tenían fallas reales. Detalle en `docs/recorrido-minimo.md` (caso 6) |
+| [5] Corregir los estados de desconexión | hecho | #7 | Resuelto en branch `item-5-offline` (Claude). Recuperación ya estaba correcta (sin cambios); Inicio y `training/active` sí tenían fallas reales. Detalle en `docs/recorrido-minimo.md` (caso 6) |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |
 | [7] Priorizar elegir una rutina existente | pendiente | | Hay rutinas cargadas; confirmar cuáles sirven para alguien que arranca de cero |
 | [8] Prellenar la siguiente serie y confirmarla | pendiente | | Absorbe el auto-inicio del descanso, que ya funciona: solo hay que no romperlo |

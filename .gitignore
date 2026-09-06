@@ -16,3 +16,6 @@ docs/fuentes/
 
 # macOS
 .DS_Store
+
+# Permisos locales de Claude Code: son de esta maquina, no del proyecto
+.claude/settings.local.json

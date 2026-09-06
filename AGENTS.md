@@ -3,6 +3,9 @@
 Reglas para cualquier agente que trabaje en este repo (Claude Code, Codex).
 Leelas antes de tocar código.
 
+`CLAUDE.md` en la raíz solo importa este archivo: son las mismas reglas para
+todos los agentes, escritas en un solo lugar. No las dupliques.
+
 ## Qué es este producto
 
 App móvil para socios de un gimnasio que empiezan a entrenar desde cero.
@@ -42,7 +45,17 @@ de usar.** El usuario la abre entre series, con una mano, y no lee instrucciones
    Los cálculos de macros son estimaciones educativas, nunca consejo médico ni
    diagnóstico.
 
-7. **Trabajá en una branch**, nunca directo sobre `main`.
+7. **Trabajá en una branch**, nunca directo sobre `main`. Un hook local rechaza
+   los commits sobre `main`.
+
+8. **Leé `docs/estado.md` antes de empezar y actualizalo al terminar.**
+   `docs/plan.md` dice qué hay que hacer; `docs/estado.md` dice qué está hecho,
+   qué está en curso y quién lo tomó. Al cerrar un item, actualizá su fila en el
+   mismo commit que el trabajo, y anotá en "Hallazgos que cambian el plan"
+   cualquier cosa que hayas descubierto que contradiga lo planificado.
+
+9. **Un item por vez, y avisá cuál tomaste.** Si otro agente ya tiene un item
+   `en curso` en `docs/estado.md`, no lo agarres en paralelo.
 
 ## Estado del proyecto
 

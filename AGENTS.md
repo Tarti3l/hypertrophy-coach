@@ -48,11 +48,18 @@ de usar.** El usuario la abre entre series, con una mano, y no lee instrucciones
 7. **Trabajá en una branch**, nunca directo sobre `main`. Un hook local rechaza
    los commits sobre `main`.
 
-8. **Leé `docs/estado.md` antes de empezar y actualizalo al terminar.**
-   `docs/plan.md` dice qué hay que hacer; `docs/estado.md` dice qué está hecho,
-   qué está en curso y quién lo tomó. Al cerrar un item, actualizá su fila en el
-   mismo commit que el trabajo, y anotá en "Hallazgos que cambian el plan"
-   cualquier cosa que hayas descubierto que contradiga lo planificado.
+8. **Leé `docs/estado.md` antes de empezar. La fila se actualiza al TERMINAR,
+   no al empezar.** `docs/plan.md` dice qué hay que hacer; `docs/estado.md`
+   dice qué está hecho, qué está en curso y quién lo tomó. Marcar `en curso`
+   al tomar el item es solo para que otro agente no lo agarre en paralelo
+   (regla 9) — no cuenta como cerrar el item. El cierre real es un commit que
+   entra a la misma branch/PR que el trabajo, después de abrir el PR (ahí
+   recién existe el número), con el estado final (`hecho`, o `en revisión` con
+   lo que falte verificar) y ese número de PR. Sin ese commit, mergear deja la
+   fila huérfana — le pasó al item [4]: quedó en "en revisión", sin PR, con una
+   nota de un bloqueo que ya no aplicaba. Anotá también en "Hallazgos que
+   cambian el plan" cualquier cosa que hayas descubierto que contradiga lo
+   planificado.
 
 9. **Un item por vez, y avisá cuál tomaste.** Si otro agente ya tiene un item
    `en curso` en `docs/estado.md`, no lo agarres en paralelo.

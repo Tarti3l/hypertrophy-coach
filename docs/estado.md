@@ -22,7 +22,7 @@ empiece una sesión lo lee primero.
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
-| [T2] CI mínimo | pendiente | | Depende de [T1]. **Bloqueado de acceso:** tocar `.github/workflows/` requiere el scope `workflow` en el token; avisar al dueño del repo al tomarlo, no bypassear |
+| [T2] CI mínimo | hecho | #11 | Resuelto en branch `item-t2-ci` (Claude). `.github/workflows/typecheck.yml`: un solo job, `pnpm typecheck` en cada PR contra `main`, sin lint/build/deploy. No bloquea el merge por sí solo — falta marcarlo "required status check" en Settings → Branches, ajuste del repositorio que le queda al dueño. De paso corrige la regla de `docs/estado.md` en `AGENTS.md` (ver Hallazgos) |
 
 **Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
 de comida en dos toques) ya están implementados. No son trabajo de desarrollo:
@@ -110,6 +110,12 @@ entrada con fecha y de qué item salió.
   nunca existió en el enum `public.muscle_group` (las migraciones y
   `MuscleGroupSlug` siempre usaron `'abs'`). Corregido reemplazando el literal
   en las 3 apariciones; los 9 casos del check siguen en verde.
+- **2026-09-06, item [T2]:** protocolo corregido en `AGENTS.md` (regla 8): la
+  fila de `docs/estado.md` se cierra al terminar, en un commit que entra a la
+  misma branch/PR antes de mergear — marcar `en curso` al empezar es solo para
+  evitar que otro agente lo agarre en paralelo, no cierra el item. La regla
+  anterior no lo dejaba explícito, y eso fue lo que dejó la fila del item [4]
+  huérfana (en revisión, sin PR, con una nota de un bloqueo ya resuelto).
 
 ## Preguntas abiertas
 

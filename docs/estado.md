@@ -11,26 +11,35 @@ empiece una sesión lo lee primero.
 | Item | Estado | PR | Nota |
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
-| [2] Definir el recorrido mínimo y registrar su estado actual | hecho | | Claude Code, branch `item-2-recorrido`. Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla (cerrar/reabrir y sin conexión) |
-| [3] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M). Candidato a revisión de Codex |
-| [4] Priorizar elegir una rutina existente | pendiente | | Hay rutinas cargadas; confirmar que alguna sirva para alguien que arranca de cero |
-| [5] Prellenar la siguiente serie y confirmarla | pendiente | | |
-| [6] Iniciar el descanso al confirmar una serie | pendiente | | |
-| [7] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
-| [8] Acercar los atajos de comida al registro diario | pendiente | | |
-| [9] Mostrar un único resumen de descanso | pendiente | | |
-| [10] Verificar el recorrido completo y documentar los límites offline | pendiente | | |
+| [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | Lista completa en `docs/recorrido-minimo.md`; 4/6 casos OK, 2/6 con falla |
+| [3] Diagnosticar y corregir la pérdida de series de la sesión activa | pendiente | | Sale del hallazgo del [2]. Diagnóstico + arreglo localizado; un cambio estructural se presenta para aprobación, no se ejecuta |
+| [4] Sustituir los consumos ficticios por los registros reales | pendiente | | Sale del hallazgo incidental del [2]: el dashboard de Alimentación está hardcodeado |
+| [5] Corregir los estados de desconexión | pendiente | | |
+| [6] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M): cinco módulos. Candidato a revisión de Codex |
+| [7] Priorizar elegir una rutina existente | pendiente | | Hay rutinas cargadas; confirmar cuáles sirven para alguien que arranca de cero |
+| [8] Prellenar la siguiente serie y confirmarla | pendiente | | Absorbe el auto-inicio del descanso, que ya funciona: solo hay que no romperlo |
+| [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
+| [10] Mostrar un único resumen de descanso | pendiente | | |
+| [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
+
+**Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
+de comida en dos toques) ya están implementados. No son trabajo de desarrollo:
+sobreviven solo como verificación dentro del [11].
 
 Estados: `pendiente` · `en curso` · `en revisión` · `hecho` · `bloqueado`.
 
 Un item `en curso` tiene dueño: anotá cuál agente lo tomó y en qué worktree,
 para que el otro no lo agarre en paralelo.
 
-**Ventana de paralelismo.** Los items [4], [8] y [9] dependen solo del [3] y
-tocan módulos distintos (`training/`, `nutrition/`, `recovery/`). Una vez
-mergeado el [3], son los tres que se pueden repartir entre agentes a la vez.
-Todo lo demás es cadena: [2] → [3] → [4] → [5] → [6] → [7], y el [10] cierra.
-El protocolo está en `AGENTS.md`, sección "Trabajo en paralelo".
+**Ventana de paralelismo — abierta ahora.** Los items [3] y [4] dependen solo
+del [2], que está hecho, y tocan módulos distintos: el [3] va a
+`features/progress/` y `features/training/`; el [4] a `features/nutrition/`.
+Son los dos que se pueden repartir entre dos agentes en este momento, cada uno
+en su worktree.
+
+Después de eso el plan vuelve a ser cadena: [5] → [6] → [7] → [8] → [9], con el
+[10] colgando de [5] y [6], y el [11] cerrando. El protocolo de worktrees está
+en `AGENTS.md`, sección "Trabajo en paralelo".
 
 ## Hallazgos que cambian el plan
 
@@ -76,20 +85,6 @@ entrada con fecha y de qué item salió.
 GPT-6 no ve el repo: se entera de lo que pasa solo por lo que le peguen acá.
 Acumulá en esta sección lo que haya que contarle, y vaciala después de reportar.
 
-- Items [1] y [2] hechos.
-- Item [2] encontró un bug real de pérdida de datos: las series de una sesión
-  activa no sobreviven a cerrar y reabrir la app (no se guardan de forma
-  recuperable hasta tanto no se sabe qué las persiste — ver Hallazgos). El
-  item [3] ("Convierte la ruta inicial en «Hoy»") depende del [2] y va a
-  mostrar "la siguiente acción de entrenamiento" en la pantalla inicial — si
-  arranca sobre una sesión con series que se pueden perder en cualquier
-  recarga, esa pantalla puede terminar mostrando o prometiendo progreso que no
-  existe. Recomendación: intercalar un item de diagnóstico/arreglo de
-  persistencia de sesión activa antes de [3], o al menos antes de [5]
-  ("Prellena la siguiente serie y confírmala"), que asume que el estado de la
-  sesión es confiable. No se investigó la causa (fuera de alcance de [2]: es
-  diagnóstico, no arreglo).
-- También sin conexión, iniciar un entrenamiento rompe la UI (dos mensajes de
-  error duplicados, pantalla en blanco) en vez de degradar con un mensaje
-  único como Inicio y Recuperación — menor prioridad que la pérdida de datos,
-  pero relevante para el item [10] ("documentar los límites offline").
+- Reporte #1 entregado el 2026-09-06 (items [1] y [2], los dos bugs y los
+  hallazgos incidentales). Devolvió el replan de los items [3] a [11], ya
+  aplicado en `docs/plan.md`. Nada pendiente de reportar por ahora.

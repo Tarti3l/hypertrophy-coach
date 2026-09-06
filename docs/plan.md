@@ -87,180 +87,187 @@ un algoritmo con la información suministrada.
 
 ## 3. Plan de trabajo
 
-### [1] Alinea la documentación con el producto del gimnasio
+**Replanificado tras el reporte #1 (2026-09-06).** Los items [1] y [2] están
+hechos. Del [3] en adelante la numeración es nueva: el hallazgo de pérdida de
+series reordenó todo, y los items [6] y [8] originales (auto-inicio del descanso
+y atajo de comida) se retiraron como trabajo de desarrollo porque ya funcionan —
+sobreviven solo como verificación en el [11].
 
-- **Objetivo:** dejar una definición vigente de tres apartados, sin monetización y
-  con prioridad de uso sencillo.
-- **Por qué ahora:** evita que los agentes ejecuten hitos comerciales que ya no
-  corresponden.
-- **Toca:** `PRODUCT.md`, `README.md`, y la sección "Verificación" de
-  `docs/progression.md` (ver nota 2 arriba).
-- **No toca:** código, estructura del repositorio, `AGENTS.md` ni funcionalidades
-  implementadas.
-- **Criterio de aceptación:** revisión manual confirma que suscripción, freemium y
-  entitlements dejan de figurar como trabajo previsto; que distribución,
-  entrenadores, escala y fecha siguen explícitamente sin definir; y que
-  `docs/progression.md` ya no afirma tener pruebas automatizadas.
-- **Depende de:** nada.
+### [3] Diagnostica y corrige la pérdida de series de la sesión activa
+
+- **Objetivo:** conservar las series confirmadas al cerrar y reabrir la app,
+  recuperando la misma sesión, rutina y día.
+- **Por qué ahora:** «Hoy» y el prellenado necesitan un estado de sesión confiable.
+- **Toca:** `features/progress/`, `features/training/`, `docs/`.
+- **No toca:** rediseño de persistencia, sincronización de producción, rachas, PR
+  ni cambios de esquema.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; en Expo Web contra Supabase
+  real, confirmar dos series, recargar por completo y volver a la misma rutina y
+  día conserva ambas y muestra 2/5; una segunda recarga no duplica registros; al
+  finalizar, la sesión aparece en el historial existente; rachas y PR mantienen su
+  comportamiento previo; se documentan causa y arreglo. Incluye diagnóstico y
+  corrección localizada; si exige un cambio estructural, se presenta para
+  aprobación sin ejecutarlo.
+- **Depende de:** [2], completado.
 - **Esfuerzo:** S.
-- **Riesgo:** eliminar contexto histórico útil; conservarlo marcado como
-  desactualizado cuando sea necesario.
+- **Riesgo:** recuperar una sesión equivocada, duplicar series o alterar agregados
+  que sí persisten.
 
-### [2] Define el recorrido mínimo y registra su estado actual
+### [4] Sustituye los consumos ficticios por los registros reales
 
-- **Objetivo:** fijar casos manuales reproducibles para evaluar la adaptación sin
-  rehacer lo que ya funciona.
-- **Por qué ahora:** permite distinguir cambios necesarios de capacidades
-  existentes.
-- **Toca:** `docs/`.
-- **No toca:** implementación, librerías, CI ni funcionalidades nuevas.
-- **Criterio de aceptación:** existe una lista manual con pasos y resultado
-  observado para elegir rutina, registrar dos series, consultar descanso, repetir
-  comida, cerrar y reabrir la app, y abrirla sin conexión; cada fallo incluye
-  plataforma y condiciones de reproducción.
-- **Depende de:** [1].
+- **Objetivo:** mostrar en Alimentación los consumos diarios calculados desde los
+  registros del usuario.
+- **Por qué ahora:** los valores hardcodeados informan incorrectamente y no deben
+  trasladarse a «Hoy».
+- **Toca:** `features/nutrition/`, `apps/mobile/app/`, `docs/`.
+- **No toca:** cálculo de la meta diaria, atajos existentes, catálogo, objetivos
+  adaptativos ni esquema de datos.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; un día vacío muestra consumos
+  cero solo cuando la lectura confirma que no hay registros; registrar una comida
+  y luego otra actualiza los totales según sus cantidades, y recargar los
+  conserva; un fallo de lectura muestra indisponibilidad, no ceros ficticios; un
+  socio distingue sin ayuda lo consumido de su meta.
+- **Depende de:** [2], completado.
 - **Esfuerzo:** S.
-- **Riesgo:** confundir un problema del entorno con una carencia del producto;
-  registrar ambos por separado.
+- **Riesgo:** sumar registros duplicados, mezclar días o confundir ausencia de
+  datos con fallo de carga.
 
-### [3] Convierte la ruta inicial en «Hoy»
+### [5] Corrige los estados de desconexión en las pantallas existentes
 
-- **Objetivo:** mostrar la siguiente acción de entrenamiento, el resumen
-  nutricional existente y el último dato de descanso en la pantalla inicial.
-- **Por qué ahora:** reúne lo necesario para el día sin exigir visitar tres
-  dashboards.
-- **Toca:** `apps/mobile/app/`, `features/training/`, `features/nutrition/`,
-  `features/recovery/`.
-- **No toca:** nuevas rutas, un módulo `today/`, cálculos nutricionales ni reglas
-  de entrenamiento.
+- **Objetivo:** mantener una interfaz utilizable sin conexión y conservar el
+  último valor conocido cuando esté disponible.
+- **Por qué ahora:** la pantalla en blanco y los ceros incorrectos son fallos
+  propios, y deben resolverse antes de componer «Hoy».
+- **Toca:** `apps/mobile/app/`, `features/training/`, `features/recovery/`, `docs/`.
+- **No toca:** garantía de entrenamiento completo offline, nueva infraestructura de
+  caché, sincronización de producción ni notificaciones.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; en Expo Web, cargar Inicio y
+  Recuperación con datos, desconectar y volver a consultarlos conserva los valores
+  disponibles identificados como últimos datos guardados; sin datos recuperables
+  aparece «Sin datos disponibles», no cero; intentar iniciar entrenamiento sin
+  conexión no deja la pantalla en blanco, muestra un único aviso y permite volver
+  o reintentar; al reconectar, reintentar recupera el flujo sin duplicar sesiones.
+- **Depende de:** [3].
+- **Esfuerzo:** S.
+- **Riesgo:** presentar datos antiguos como actuales, o arrancar sesiones
+  duplicadas al reintentar.
+
+### [6] Convierte la ruta inicial en «Hoy»
+
+- **Objetivo:** reunir la siguiente acción de entrenamiento, el consumo
+  nutricional real y el último dato de descanso en la pantalla inicial.
+- **Por qué ahora:** las fuentes y los estados de error ya deben ser confiables
+  antes de reunirlos.
+- **Toca:** `apps/mobile/app/`, `features/training/`, `features/progress/`,
+  `features/nutrition/`, `features/recovery/`.
+- **No toca:** nuevas rutas, un cuarto apartado, un módulo nuevo ni reglas de
+  cálculo.
 - **Criterio de aceptación:** `pnpm typecheck` pasa; un socio identifica sin ayuda
-  cómo empezar su entrenamiento y consulta alimentación y descanso en la misma
-  pantalla; los datos ausentes muestran «Sin registrar» y los antiguos indican su
-  fecha; siguen existiendo solo tres apartados.
-- **Depende de:** [2].
-- **Esfuerzo:** M — toca tres módulos y es el item más grande del plan, no S.
-- **Riesgo:** duplicar estado o presentar datos antiguos como actuales.
+  cómo empezar o continuar su entrenamiento y consulta alimentación y descanso en
+  la misma pantalla; tras recargar una sesión activa, la acción permite
+  continuarla; datos ausentes, antiguos e indisponibles se distinguen; no se
+  agregan pantallas.
+- **Depende de:** [3], [4], [5].
+- **Esfuerzo:** M — toca cinco módulos. Es el item más grande del plan; si se
+  vuelve inmanejable, partirlo por apartado.
+- **Riesgo:** duplicar estado o mostrar una acción incompatible con la sesión
+  recuperada.
 
-### [4] Prioriza elegir una rutina existente
+### [7] Prioriza elegir una rutina existente
 
-- **Objetivo:** usar la selección de un programa ya armado como entrada al
+- **Objetivo:** usar la selección de un programa armado como entrada al
   entrenamiento.
-- **Por qué ahora:** evita que el principiante tenga que diseñar una rutina para
-  empezar.
+- **Por qué ahora:** evita exigirle al principiante construir una rutina, y se
+  integra con la entrada de «Hoy».
 - **Toca:** `apps/mobile/app/`, `features/training/`.
-- **No toca:** lógica interna de `routine-builder`, `routine-editor`, rutinas
-  compartidas ni creación de programas.
+- **No toca:** capacidades del constructor, editor, rutinas compartidas ni
+  creación de programas.
 - **Criterio de aceptación:** `pnpm typecheck` pasa; con una rutina existente
-  disponible, un socio la elige y empieza sin abrir el constructor; «Crear o
-  editar rutina» queda como acceso secundario, sin interruptor de modo avanzado
-  ni pantalla adicional.
-- **Depende de:** [3].
+  aprobada para principiantes, un socio la elige y empieza sin abrir el
+  constructor; crear o editar queda como acceso secundario en la pantalla
+  existente, sin otra pantalla ni modo avanzado.
+- **Depende de:** [6], y confirmación de qué rutinas disponibles son aptas para
+  principiantes.
 - **Esfuerzo:** S.
-- **Riesgo:** ocultar funciones necesarias a usuarios actuales; conservar sus
-  accesos secundarios y rutas.
+- **Riesgo:** dificultarle a los usuarios actuales el acceso al constructor, o
+  presentar programas no aprobados.
 
-### [5] Prellena la siguiente serie y permite confirmarla
+### [8] Prellena la siguiente serie y permite confirmarla
 
-- **Objetivo:** reducir el registro a revisar peso y repeticiones y confirmar una
-  vez cuando no haya cambios.
-- **Por qué ahora:** es la interacción que más se repite durante el entrenamiento.
+- **Objetivo:** revisar peso y repeticiones y confirmar una serie con un toque
+  cuando no haya cambios.
+- **Por qué ahora:** el estado de la sesión ya se conserva y puede sostener un
+  registro mínimo.
 - **Toca:** `features/progress/`, `features/training/`, `apps/mobile/app/`.
-- **No toca:** RPC de guardado, gráficos, rachas, nuevas métricas ni el algoritmo
-  de progresión.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; un socio confirma con un toque
-  una serie prellenada y puede editarla antes; se usa el último registro del mismo
-  ejercicio y variante, identificado como anterior; sin historial no aparece un
-  peso inventado; dos toques rápidos no generan dos series.
-- **Depende de:** [4].
+- **No toca:** implementación del timer existente, RPC de guardado, gráficos,
+  rachas ni algoritmo de progresión.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; un socio confirma con un
+  toque una serie prellenada y puede editarla antes; el valor anterior corresponde
+  al mismo ejercicio y variante; sin historial no aparece un peso inventado; dos
+  toques rápidos no duplican la serie; recargar conserva lo confirmado y el
+  descanso sigue arrancando automáticamente.
+- **Depende de:** [3], [7].
 - **Esfuerzo:** S.
-- **Riesgo:** reutilizar valores de otra variante, o guardar el prellenado antes
-  de confirmarlo.
+- **Riesgo:** usar valores de otra variante, guardar antes de confirmar, o
+  interferir con el timer que ya funciona.
 
-### [6] Inicia el descanso al confirmar una serie
+### [9] Presenta la recomendación de la próxima serie
 
-- **Objetivo:** arrancar el timer existente automáticamente después de guardar una
-  serie.
-- **Por qué ahora:** elimina una acción repetitiva del recorrido recién definido.
-- **Toca:** `features/training/`, `features/progress/`, `apps/mobile/app/`.
-- **No toca:** defaults de descanso, notificaciones, servicios en segundo plano ni
-  librerías.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; un socio confirma una serie y
-  ve el descanso comenzar sin otra acción; puede omitirlo desde la misma pantalla;
-  editar una serie anterior no reinicia el timer.
-- **Depende de:** [5].
-- **Esfuerzo:** S.
-- **Riesgo:** disparar varios timers o reiniciarlos al corregir registros.
-
-### [7] Presenta la recomendación de la próxima serie
-
-**Reformulado — ver nota 1.** La lógica ya existe; esto es solo presentación.
-
-- **Objetivo:** que el socio distinga claramente la sugerencia de `progression.ts`
-  del último registro, y pueda modificarla antes de confirmar.
-- **Por qué ahora:** resuelve la decisión principal del principiante una vez que
-  registrar y descansar funciona.
-- **Toca:** `features/training/screens/ActiveWorkoutScreen.tsx`,
-  `features/training/hooks/useProgression.ts`.
+- **Objetivo:** mostrar peso y repeticiones sugeridos usando únicamente las reglas
+  de progresión confirmadas.
+- **Por qué ahora:** con persistencia y registro resueltos, se puede abordar la
+  decisión de qué hacer en la siguiente serie.
+- **Toca:** `docs/progression.md`, `features/training/`, `features/progress/`.
 - **No toca:** `services/progression.ts` — las reglas no se cambian. Tampoco
-  mesociclos ni ajustes automáticos por sueño.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; comprobados a mano los casos
-  de `docs/progression.md` (sin historial, por debajo del objetivo, objetivo
-  alcanzado sin superarlo por 2, regla 2-por-2 cumplida, tope del 10 % en cargas
-  ligeras); un socio distingue la sugerencia del último registro, puede
-  modificarla y confirmarla en la misma pantalla.
-- **Depende de:** [5], [6].
+  algoritmos nuevos, mesociclos, cambios de rutina ni ajustes por sueño.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; se verifican a mano los casos
+  de historial suficiente, insuficiente y cambio de variante contra las reglas
+  documentadas; un socio distingue sugerencia de registro anterior, puede
+  modificar la propuesta y confirmarla en la misma pantalla; sin respaldo
+  suficiente no se presenta el último registro como recomendación.
+- **Depende de:** [8].
 - **Esfuerzo:** S.
-- **Riesgo:** presentar como recomendación un valor que en realidad es el registro
-  anterior. Si falta información, mostrar el registro anterior sin llamarlo
-  recomendación.
+- **Riesgo:** recomendar una carga sin respaldo, o confundir una propuesta con una
+  serie realizada.
 
-### [8] Acerca los atajos de comida al registro diario
-
-- **Objetivo:** registrar alimentos habituales usando `food_shortcuts`.
-- **Por qué ahora:** reduce escritura sin ampliar el catálogo ni sumar pantallas.
-- **Toca:** `features/nutrition/`, `apps/mobile/app/`.
-- **No toca:** esquema de `food_shortcuts`, códigos de barras, micronutrientes ni
-  objetivos adaptativos.
-- **Criterio de aceptación:** `pnpm typecheck` pasa; con un atajo disponible, un
-  socio registra su comida en un máximo de dos toques, sin buscar ingredientes;
-  puede revisar la cantidad antes de confirmar; sin atajos, el registro habitual
-  sigue accesible.
-- **Depende de:** [3].
-- **Esfuerzo:** S.
-- **Riesgo:** registrar porciones equivocadas o duplicadas.
-
-### [9] Muestra un único resumen de descanso
+### [10] Muestra un único resumen de descanso
 
 - **Objetivo:** presentar las horas de sueño registradas como dato principal.
-- **Por qué ahora:** hace consultable el apartado sin introducir un score ni otra
-  pregunta diaria.
+- **Por qué ahora:** hace consultable el apartado aprovechando los estados de
+  desconexión ya corregidos.
 - **Toca:** `features/recovery/`, `apps/mobile/app/`.
 - **No toca:** modelo de sueño, contenido educativo, sensores, deuda de sueño ni
   prescripciones de entrenamiento.
 - **Criterio de aceptación:** `pnpm typecheck` pasa; un socio identifica sin ayuda
-  cuántas horas registró y a qué noche corresponden; si no hay registro, encuentra
-  la entrada desde esa misma pantalla; «Hoy» reutiliza ese resumen.
-- **Depende de:** [3].
+  cuántas horas registró y a qué noche corresponden; sin registro encuentra la
+  entrada desde esa misma pantalla; «Hoy» reutiliza el mismo resumen y, sin
+  conexión, no reemplaza el último dato conocido por cero.
+- **Depende de:** [5], [6].
 - **Esfuerzo:** S.
-- **Riesgo:** interpretar horas como diagnóstico de recuperación; etiquetar el dato
-  como «Sueño registrado».
+- **Riesgo:** interpretar las horas como diagnóstico de recuperación, o mostrar
+  una noche antigua como actual.
 
-### [10] Verifica el recorrido completo y documenta los límites offline
+### [11] Verifica el recorrido completo y documenta las capacidades existentes
 
-- **Objetivo:** comprobar que la adaptación mantiene los datos y permite completar
-  los recorridos acordados.
-- **Por qué ahora:** valida el uso real antes de ampliar funcionalidades.
+- **Objetivo:** comprobar en conjunto las correcciones y dejar evidencia de las
+  funciones que ya estaban implementadas.
+- **Por qué ahora:** cierra la adaptación sin reconstruir el timer ni los atajos
+  de comida.
 - **Toca:** `docs/`.
-- **No toca:** sincronización de producción, despliegue, autenticación ni promesas
-  nuevas de disponibilidad offline.
-- **Criterio de aceptación:** `pnpm typecheck` pasa y se repiten los casos de [2];
-  un socio sin ayuda elige una rutina existente, registra dos series, consulta
-  descanso y registra una comida habitual; cerrar y reabrir conserva los registros
-  locales previstos; se documenta qué funciona sin conexión, diferenciando
-  contenido previamente cargado y primer acceso.
-- **Depende de:** [4], [5], [6], [7], [8], [9].
+- **No toca:** la implementación del antiguo [6] ni del antiguo [8], retirados como
+  trabajo de desarrollo; tampoco agrega tests, test runner, CI ni funcionalidades
+  offline.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; se documenta una ejecución
+  manual donde un socio elige una rutina, confirma dos series, ve iniciar el
+  descanso automáticamente, recarga y continúa sin pérdida ni duplicación;
+  registra una comida habitual en dos toques y ve consumos reales; consulta
+  descanso; y se reproducen los casos offline del [5] sin pantalla en blanco ni
+  ceros falsos. Se identifica plataforma y entorno, manteniendo nativo como no
+  verificado.
+- **Depende de:** [4], [5], [7], [8], [10]; también [9] si quedó desbloqueado.
 - **Esfuerzo:** S.
-- **Riesgo:** extrapolar resultados entre plataformas.
+- **Riesgo:** extrapolar resultados de Expo Web a nativo, o dar por corregido un
+  fallo solo porque quedó documentado.
 
 ## 4. Preguntas abiertas
 

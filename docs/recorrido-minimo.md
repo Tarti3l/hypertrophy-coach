@@ -131,6 +131,25 @@ entrenamiento" guarda normalmente, el ejercicio aparece en Progreso ("Ya
 tienes tu primer registro") y la racha/semana de Inicio suben igual que
 antes.
 
+### Vencimiento del borrador (revisión de PR, 2026-09-06)
+
+El primer arreglo no le ponía límite de antigüedad al borrador: una sesión
+abandonada sin finalizar se restauraba entera al volver a la misma rutina y
+día, aunque fuera días después, con su `startedAt` original — mostraba series
+viejas como si fueran de la sesión de ahora.
+
+Se agregó `MAX_WORKOUT_SESSION_HOURS = 6` en `workoutSessionDraft.ts`:
+`loadWorkoutSessionDraft` descarta y borra cualquier borrador cuyo `startedAt`
+tenga más de 6 horas, en vez de restaurarlo. Es el mismo tope que
+`useWorkoutSession.ts` ya usaba para acotar `durationMinutes` de un
+entrenamiento finalizado (nadie entrena 6+ horas seguidas); se unificó en una
+sola constante en vez de tener el mismo número de gimnasio repetido dos veces.
+
+**Verificado a mano** inyectando un borrador falso en `localStorage` (misma
+clave que usa AsyncStorage en Expo Web): con `startedAt` de hace 10 h, la
+sesión arranca en blanco y el borrador viejo se sobreescribe; con `startedAt`
+de hace 2 h, se restaura igual que antes del cambio.
+
 ## 6. Abrir sin conexión — FALLA (parcial)
 
 **Cómo se simuló:** no hay forma de cortar la conectividad real del

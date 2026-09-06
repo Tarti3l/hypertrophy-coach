@@ -105,13 +105,17 @@ sobreviven solo como verificación en el [11].
   real, confirmar dos series, recargar por completo y volver a la misma rutina y
   día conserva ambas y muestra 2/5; una segunda recarga no duplica registros; al
   finalizar, la sesión aparece en el historial existente; rachas y PR mantienen su
-  comportamiento previo; se documentan causa y arreglo. Incluye diagnóstico y
-  corrección localizada; si exige un cambio estructural, se presenta para
-  aprobación sin ejecutarlo.
+  comportamiento previo; se documentan causa y arreglo. El borrador de una sesión
+  sin finalizar vence a las **6 horas** de iniciada (mismo tope que ya usa
+  `durationMinutes` para un entrenamiento finalizado, en
+  `useWorkoutSession.ts`): pasado ese límite se ignora y se borra en vez de
+  restaurarse, para no mostrar series de un día anterior como si fueran de ahora.
+  Incluye diagnóstico y corrección localizada; si exige un cambio estructural, se
+  presenta para aprobación sin ejecutarlo.
 - **Depende de:** [2], completado.
 - **Esfuerzo:** S.
-- **Riesgo:** recuperar una sesión equivocada, duplicar series o alterar agregados
-  que sí persisten.
+- **Riesgo:** recuperar una sesión equivocada, duplicar series, alterar agregados
+  que sí persisten, o restaurar una sesión abandonada como si fuera la de hoy.
 
 ### [4] Sustituye los consumos ficticios por los registros reales
 

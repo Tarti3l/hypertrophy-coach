@@ -5,7 +5,7 @@ import { createUuid } from '@/utils/ids';
 
 import { enqueueWorkout } from '../services/offlineWorkoutQueue';
 import { classifySaveError, saveCompletedWorkout } from '../services/workoutSessionRepository';
-import { clearWorkoutSessionDraft, loadWorkoutSessionDraft, saveWorkoutSessionDraft } from '../services/workoutSessionDraft';
+import { clearWorkoutSessionDraft, loadWorkoutSessionDraft, MAX_WORKOUT_SESSION_HOURS, saveWorkoutSessionDraft } from '../services/workoutSessionDraft';
 import { CompletedWorkoutDraft, CompletedWorkoutSet, WorkoutSetDraft } from '../types/workoutSession';
 import { applySetValue, EFFECTIVE_SETS_PER_EXERCISE, reconcileSets } from './setDrafts';
 
@@ -223,7 +223,7 @@ export function useWorkoutSession(exerciseIds: string[], setsByExerciseId?: Reco
       endedAt: endedAt.toISOString(),
       // Contra el reloj, no contra el contador de pantalla: si la app estuvo en
       // segundo plano, elapsedSeconds podría ir corto.
-      durationMinutes: Math.min(360, Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000))),
+      durationMinutes: Math.min(MAX_WORKOUT_SESSION_HOURS * 60, Math.max(1, Math.round((Date.now() - startedAt.getTime()) / 60000))),
       notes: null,
       sets
     };

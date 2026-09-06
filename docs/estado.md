@@ -11,7 +11,7 @@ empiece una sesión lo lee primero.
 | Item | Estado | PR | Nota |
 | --- | --- | --- | --- |
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | También corrigió una mención suelta a "prueba automatizada" en `docs/progression.md` |
-| [2] Definir el recorrido mínimo y registrar su estado actual | pendiente | | Requiere correr la app; separar fallas de entorno de carencias del producto |
+| [2] Definir el recorrido mínimo y registrar su estado actual | en curso | | Claude Code, branch `item-2-recorrido` |
 | [3] Convertir la ruta inicial en «Hoy» | pendiente | | El más grande (M). Candidato a revisión de Codex |
 | [4] Priorizar elegir una rutina existente | pendiente | | Hay rutinas cargadas; confirmar que alguna sirva para alguien que arranca de cero |
 | [5] Prellenar la siguiente serie y confirmarla | pendiente | | |

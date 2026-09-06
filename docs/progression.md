@@ -2,6 +2,37 @@
 
 Implementado en `apps/mobile/src/features/training/services/progression.ts`.
 
+## Dos mecanismos, no uno
+
+Este documento describe la regla 2-por-2, que decide **entre sesiones** si toca
+subir peso. Hay un segundo mecanismo, **dentro de la misma sesión**, en
+`apps/mobile/src/features/progress/components/SetTracker.tsx`: al cerrar una
+serie efectiva, compara las repeticiones contra un rango fijo de 8 a 12 y
+avisa si conviene subir el peso ya, sin esperar a la sesión siguiente. No
+reemplaza la regla 2-por-2 ni compite con ella — una decide el peso de
+*hoy*, la otra el de *la próxima vez*.
+
+**Decisión de producto, no un hallazgo a medias:** esta app entrena siempre
+al fallo en el rango de 8 a 12 repeticiones. Es deliberado, para que un
+principiante aprenda una sola regla en vez de un objetivo distinto por
+ejercicio. Rangos más altos para trabajo de aislamiento son válidos en la
+literatura en general, pero programarlos queda **fuera de alcance a
+propósito** — no es algo que esta app vaya a ofrecer. Por eso `target_reps`
+de una rutina, cuando exista, tiene que caer dentro de 8-12: si no cae,
+el dato está mal, no la regla.
+
+Esto ya obligó a corregir 9 ejercicios del catálogo cuyo `default_reps_low`/
+`default_reps_high` quedaba fuera de 8-12 (migración `00021`): el caso que lo
+expuso fue "Apertura en máquina (pec deck)" (10-15), más seis compuestos con
+rango de fuerza clásico (press de banca, militar, remo con barra, sentadilla
+con barra, sentadilla frontal, sentadilla profunda — todos 6-10) y dos
+variantes de peso corporal (curl nórdico 4-8, dominada asistida 5-10) — ninguno
+de estos ocho es aislamiento, así que la excepción de arriba no los cubría.
+Quedan sin tocar, a propósito, los ejercicios de aislamiento con techo más
+alto (curls, extensiones, elevaciones, pantorrilla, abdominales — típicamente
+10-20) y dos que no se miden en repeticiones al fallo (`farmers-walk`,
+tiempo/distancia; `plank`, isométrico).
+
 ## Cuándo subir peso: la regla 2-por-2 (NSCA)
 
 > "Cuando alguien hace 2 repeticiones más del objetivo en la **última serie** de los

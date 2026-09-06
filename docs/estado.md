@@ -21,7 +21,7 @@ empiece una sesión lo lee primero.
 | [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
-| [12] Ajustar el rango de series efectivas y el aviso de subir peso | bloqueado | | Agregado por el dueño del repo, fuera del plan de GPT-6. No se implementa hasta resolver cómo conviven el rango 8-12 en sesión y la regla 2-por-2 entre sesiones — ver Hallazgos |
+| [12] Ajustar el rango de series efectivas y el aviso de subir peso | en curso | | Tomado por Claude en branch `item-12-rango-efectivo`. Decisión ya tomada: 8-12 es fijo, el dato que no encaja se corrige (ver Hallazgos y `docs/progression.md`). Falta la parte de UI: bajar a 4 series por ejercicio y que el aviso aparezca una sola vez |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
 | [T2] CI mínimo | hecho | #11 | Resuelto en branch `item-t2-ci` (Claude). `.github/workflows/typecheck.yml`: un solo job, `pnpm typecheck` en cada PR contra `main`, sin lint/build/deploy. No bloquea el merge por sí solo — falta marcarlo "required status check" en Settings → Branches, ajuste del repositorio que le queda al dueño. De paso corrige la regla de `docs/estado.md` en `AGENTS.md` (ver Hallazgos) |
 
@@ -149,6 +149,28 @@ entrada con fecha y de qué item salió.
   piso que ninguna rutina debería pisar y entonces el dato de la rutina es el
   que está mal?) antes de implementar el item [12] o de documentar el
   mecanismo 2 en `docs/progression.md`.
+- **2026-09-06, item [12] — resuelto:** dos correcciones al hallazgo anterior
+  y la decisión tomada.
+  - **Corrección:** el "15" no salía de `routine_exercises.target_reps` — esa
+    columna está en `null` en **todas** las filas de la base real, se
+    confirmó por consulta directa. Salía de `exercises.default_reps_high`
+    (nivel catálogo, no rutina), que `ActiveWorkoutScreen` usa como
+    respaldo cuando la rutina no fija nada — que es siempre, hoy.
+  - **Alcance real, no un solo ejercicio:** consultando el catálogo completo,
+    **62 de 91 ejercicios** tienen `default_reps` fuera de 8-12. La
+    inmensa mayoría (~54) es aislamiento con techo alto (curls, elevaciones,
+    pantorrilla, abdominales — 10-20 típico): decisión del dueño, quedan
+    sin tocar. Ocho no eran aislamiento y sí se corrigieron: seis compuestos
+    con rango de fuerza clásico (press de banca, militar, remo con barra,
+    sentadilla con barra, sentadilla frontal, sentadilla profunda — 6-10) y
+    dos variantes de peso corporal (curl nórdico 4-8, dominada asistida
+    5-10). Dos quedan aparte por naturaleza: `farmers-walk` y `plank` no se
+    miden en repeticiones al fallo.
+  - **Decisión:** (b) — el rango 8-12 es fijo, el dato que no encaja es el
+    que está mal. Corregidos `pec-deck` + los ocho de arriba a 8-12 en la
+    migración `00021_fix_default_reps_range.sql`, aplicada al remoto.
+    Documentado como decisión de producto (no hallazgo a medias) en
+    `docs/progression.md`.
 
 ## Preguntas abiertas
 

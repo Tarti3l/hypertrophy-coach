@@ -19,3 +19,6 @@ docs/fuentes/
 
 # Permisos locales de Claude Code: son de esta maquina, no del proyecto
 .claude/settings.local.json
+
+# Resultados de agentes en paralelo (convencion del skill de Starcil)
+.fleet/

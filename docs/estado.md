@@ -80,6 +80,11 @@ entrada con fecha y de qué item salió.
   series y el calentamiento — no estaba en el repro del hallazgo original.
   Detalle completo (causa, arreglo, reverificación manual) en
   `docs/recorrido-minimo.md`, caso 5.
+- **2026-09-06, item [3]:** `pnpm typecheck` tiene 3 errores preexistentes en
+  `scripts/checks/weekPlan.check.ts` (`Type '"abdomen"' is not assignable to
+  type 'MuscleGroupSlug'`, líneas 18, 34 y 80), ya presentes en `main` antes de
+  este item — confirmado corriendo el mismo comando con `git stash`. No los
+  causó ningún trabajo de este plan.
 
 ## Preguntas abiertas
 

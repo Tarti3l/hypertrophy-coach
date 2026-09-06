@@ -1,6 +1,6 @@
 # Hypertrophy Coach
 
-Mobile freemium app for teaching absolute beginners the fundamentals of muscle gain. The repository currently implements Module 1 (onboarding and macro estimate), Module 2 (training theory, warm-up, exercise variants, and visual-dictionary mock integration), Module 3 (set tracking, local session history, streaks, and progress visualization), Module 4 (nutrition education, daily macro dashboard, and hydration tracking), plus Modules 5 and 6 unified in a recovery experience for sleep and red-flag education.
+Mobile app for teaching absolute beginners the fundamentals of muscle gain. The repository currently implements Module 1 (onboarding and macro estimate), Module 2 (training theory, warm-up, exercise variants, and visual-dictionary mock integration), Module 3 (set tracking, local session history, streaks, and progress visualization), Module 4 (nutrition education, daily macro dashboard, and hydration tracking), plus Modules 5 and 6 unified in a recovery experience for sleep and red-flag education.
 
 ## Architecture
 
@@ -9,8 +9,8 @@ Mobile freemium app for teaching absolute beginners the fundamentals of muscle g
 | Mobile frontend | Expo SDK 57, React Native, TypeScript, Expo Router | Native iOS/Android UI, local-first state, notifications, accessibility |
 | Client state | Zustand + TanStack Query | Form/session state and cached remote data; Module 1 persists only its completed profile locally |
 | Backend | Supabase Auth, Postgres, Storage, Edge Functions | Auth, row-level security, relational data, media delivery, trusted jobs |
-| Database | PostgreSQL (Supabase) | User-owned logs, programs, exercise catalogue, entitlements metadata |
-| Product services | Expo Notifications + RevenueCat (later) | Smart reminders and cross-store subscription entitlement validation |
+| Database | PostgreSQL (Supabase) | User-owned logs, programs, exercise catalogue |
+| Product services | Expo Notifications (later) | Smart reminders |
 | Observability | Sentry + PostHog (later) | Crash reporting and privacy-reviewed product events |
 
 Expo is a pragmatic choice because it keeps one TypeScript/React Native codebase for iOS and Android, while Supabase provides Postgres and row-level security for user-owned data. Use `npx create-expo-app@latest` / `npx expo install` to resolve SDK-compatible package versions whenever the scaffold is upgraded. [Expo documentation](https://docs.expo.dev/get-started/create-a-project/) [Supabase Expo guide](https://supabase.com/docs/guides/getting-started/quickstarts/expo-react-native)
@@ -40,7 +40,7 @@ The calculation uses Mifflin–St Jeor for an estimated basal metabolic rate, a 
 │   │       │   ├── recovery/           # Modules 5 and 6 — implemented
 │   │       │   ├── red-flags/          # Superseded by recovery/
 │   │       │   ├── notifications/      # retention infrastructure — reserved
-│   │       │   └── subscription/       # freemium entitlement — reserved
+│   │       │   └── subscription/       # entitlement — out of scope, reserved
 │   │       ├── theme/                  # Semantic visual tokens
 │   │       └── utils/                  # Pure shared helpers
 │   └── api/                            # Optional custom BFF / webhooks, later
@@ -66,5 +66,5 @@ Before a production build, install package versions with `npx expo install` from
 
 ## Next milestones
 
-1. Smart notifications, remote exercise media, and subscription entitlement.
+1. Smart notifications and remote exercise media.
 2. Production Supabase sync and content operations.

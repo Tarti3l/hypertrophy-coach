@@ -171,6 +171,15 @@ entrada con fecha y de qué item salió.
     migración `00021_fix_default_reps_range.sql`, aplicada al remoto.
     Documentado como decisión de producto (no hallazgo a medias) en
     `docs/progression.md`.
+  - **Series por ejercicio, mismo criterio:** `target_sets` variaba de 2 a 4
+    según el rol del ejercicio. Consultando `split_template_slots` (68 filas:
+    25 en 4, 3 en 2, 40 ya en 3) y la rutina personal del dueño del repo (27
+    filas: 12 en 4, 1 en 2, 14 ya en 3), se decidió fijar **3 series efectivas
+    siempre**, misma lógica que el rango de reps. Corregido en la migración
+    `00022_fix_target_sets_range.sql` (templates compartidos completos + la
+    rutina personal del dueño, no rutinas de otros usuarios) y verificado por
+    consulta directa: los 68 slots y las 27 filas ya están en 3. Documentado
+    con su costo conocido (menos volumen semanal) en `docs/rutinas.md` §1.1.
 
 ## Preguntas abiertas
 

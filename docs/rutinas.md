@@ -69,6 +69,36 @@ real es la adherencia, no la dosis.
 muscular.** El concepto es popular en divulgación pero no tiene respaldo
 cuantitativo en la literatura revisada por pares. La app no lo usa.
 
+### 1.1 Decisión: 3 series efectivas por ejercicio, siempre — con un costo conocido
+
+Hasta ahora `target_sets` variaba por ejercicio según su rol: compuestos
+principales solían tener 4, accesorios 2 o 3. Se cambia a **una cifra fija: 3
+series efectivas por ejercicio, sin excepción**, tanto en los templates
+compartidos (`split_template_slots`) como en las rutinas ya armadas. Misma
+lógica que el rango de repeticiones fijo de 8-12 (`docs/progression.md`): una
+sola regla que un principiante pueda memorizar, en vez de un número distinto
+por ejercicio que tiene que recordar o adivinar.
+
+**El costo es real y es este documento el que lo dice:** §1 arriba muestra que
+el volumen semanal es el motor principal de la hipertrofia. Un ejercicio que
+antes aportaba 4 series ahora aporta 3 — menos volumen para el grupo muscular
+que entrena, no un cambio neutro. Lo elegimos igual porque:
+
+- El rango de principiante que la app ya usa (6-10 series semanales por grupo,
+  tabla de arriba) es **deliberadamente conservador y está muy por debajo del
+  techo** a propósito: a este nivel el factor limitante es la adherencia, no
+  la dosis, y "un principiante gana con casi cualquier estímulo" (mismo
+  párrafo). Perder 1 serie por ejercicio no saca a la mayoría de las rutinas
+  de ese rango — las corre hacia el extremo bajo, no las tira fuera de él.
+- Es exactamente la misma prioridad que ya justificó el rango 8-12 fijo:
+  simplicidad para quien recién empieza, por encima de exprimir cada variable
+  por separado.
+
+**No es una garantía de volumen.** Un ejercicio que era el único estímulo
+directo de un grupo muscular en la semana puede quedar por debajo de las 6
+series si antes dependía de tener 4. No se corrigió caso por caso: la decisión
+es la regla fija, no el volumen resultante de cada rutina.
+
 ---
 
 ## 2. Frecuencia: por qué recomendamos 2 veces por músculo y por semana

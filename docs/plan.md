@@ -273,6 +273,57 @@ sobreviven solo como verificación en el [11].
 - **Riesgo:** extrapolar resultados de Expo Web a nativo, o dar por corregido un
   fallo solo porque quedó documentado.
 
+### Items técnicos (T)
+
+Deuda operativa que el dueño del repo agregó directamente, fuera de la
+numeración de GPT-6: no salen del recorrido del producto, sino de fricción
+real ejecutando el plan. Se numeran con prefijo `T` para no interferir con
+la secuencia [1]–[11].
+
+#### [T1] Deja `pnpm typecheck` en verde
+
+- **Objetivo:** que `pnpm typecheck` termine en verde (exit 0) en todo el
+  monorepo.
+- **Por qué ahora:** el criterio "`pnpm typecheck` pasa" aparece en el criterio
+  de aceptación de todos los items del plan, pero hoy nunca es literalmente
+  cierto: `apps/mobile/scripts/checks/weekPlan.check.ts` tiene 3 errores de tipo
+  preexistentes (`Type '"abdomen"' is not assignable to type 'MuscleGroupSlug'`,
+  líneas 18, 34 y 80 — el slug real del enum `public.muscle_group` es `'abs'`,
+  no `'abdomen'`). Cualquier agente ve el comando "fallar" sin poder distinguir
+  si su cambio rompió algo. Ya le costó tiempo a Codex, que tuvo que armarse un
+  `tsconfig` temporal para esquivarlos.
+- **Toca:** `apps/mobile/scripts/checks/weekPlan.check.ts`, `docs/`.
+- **No toca:** `validateWeekPlan` ni `matchesTemplate` (la lógica que el check
+  verifica no cambia), otros scripts de `scripts/checks/`, `pnpm media:check`.
+- **Criterio de aceptación:** `pnpm typecheck` termina sin ningún error;
+  `apps/mobile/scripts/checks/weekPlan.check.ts` sigue corriendo igual (mismos
+  9 casos, mismos resultados) — se ejecuta a mano con
+  `npx tsx apps/mobile/scripts/checks/weekPlan.check.ts` porque no hay test
+  runner ni script de `package.json` para esto (ver `docs/progression.md`).
+- **Depende de:** nada.
+- **Esfuerzo:** XS.
+- **Riesgo:** ninguno relevante — es un typo de slug, no un problema de lógica.
+
+#### [T2] CI mínimo
+
+- **Objetivo:** un workflow de GitHub Actions que corra `pnpm typecheck` en
+  cada PR.
+- **Por qué ahora:** sin esto, "`pnpm typecheck` pasa" es una promesa que cada
+  agente cumple o no por su cuenta. Con CI pasa a ser una barrera real antes de
+  mergear.
+- **Toca:** `.github/workflows/`, `docs/`.
+- **No toca:** otros checks (`db:status`, `media:check`) hasta que se pida
+  explícitamente; no agrega test runner ni tests nuevos.
+- **Criterio de aceptación:** un PR con un error de tipo introducido a propósito
+  falla el check de GitHub Actions; el mismo PR sin el error lo pasa.
+- **Depende de:** [T1] (correr CI contra un `typecheck` que ya está en rojo no
+  sirve de nada).
+- **Esfuerzo:** S.
+- **Riesgo:** ninguno de producto. **Bloqueo de acceso:** tocar
+  `.github/workflows/` requiere el scope `workflow` en el token de quien abra
+  el PR; el dueño del repo todavía no lo tiene. Avisarle al llegar a este item
+  en vez de intentar bypassearlo.
+
 ## 4. Preguntas abiertas
 
 Resueltas por la nota de verificación:

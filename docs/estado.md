@@ -21,6 +21,8 @@ empiece una sesión lo lee primero.
 | [9] Presentar la recomendación de la próxima serie | pendiente | | Solo presentación: `services/progression.ts` ya existe y no se toca |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
+| [T1] Dejar `pnpm typecheck` en verde | en curso | | Tomado por Claude en branch `item-t1-typecheck`. Agregado por el dueño del repo, fuera de la numeración de GPT-6 — ver `docs/plan.md` |
+| [T2] CI mínimo | pendiente | | Depende de [T1]. **Bloqueado de acceso:** tocar `.github/workflows/` requiere el scope `workflow` en el token; avisar al dueño del repo al tomarlo, no bypassear |
 
 **Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
 de comida en dos toques) ya están implementados. No son trabajo de desarrollo:

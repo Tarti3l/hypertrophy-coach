@@ -22,7 +22,7 @@ empiece una sesión lo lee primero.
 | [10] Mostrar un único resumen de descanso | pendiente | | |
 | [11] Verificar el recorrido completo y documentar lo existente | pendiente | | Documenta el timer y el atajo de comida, que ya funcionan |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Resuelto en branch `item-t1-typecheck` (Claude). Los 3 errores eran un typo de slug: `'abdomen'` no existe en `public.muscle_group`, el valor real es `'abs'`. `pnpm typecheck` termina sin errores; los 9 casos de `weekPlan.check.ts` siguen en verde (`npx tsx apps/mobile/scripts/checks/weekPlan.check.ts`) |
-| [T2] CI mínimo | pendiente | | Depende de [T1]. **Bloqueado de acceso:** tocar `.github/workflows/` requiere el scope `workflow` en el token; avisar al dueño del repo al tomarlo, no bypassear |
+| [T2] CI mínimo | en curso | | Tomado por Claude en branch `item-t2-ci`. El dueño del repo ya tiene el scope `workflow`; desbloqueado |
 
 **Retirados del plan.** Los antiguos [6] (auto-inicio del descanso) y [8] (atajo
 de comida en dos toques) ya están implementados. No son trabajo de desarrollo:

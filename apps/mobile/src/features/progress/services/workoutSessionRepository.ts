@@ -220,6 +220,93 @@ export async function getLastPerformanceByExercise(exerciseIds: string[]): Promi
   return latest;
 }
 
+export type TodaysCompletedSet = {
+  exerciseId: string;
+  setNumber: number;
+  completedReps: number | null;
+  weightKg: number | null;
+};
+
+export type TodaysCompletedWorkout = {
+  workoutId: string;
+  endedAt: string;
+  sets: TodaysCompletedSet[];
+};
+
+type TodaysWorkoutRow = {
+  id: string;
+  ended_at: string;
+  workout_sets: {
+    exercise_id: string;
+    set_number: number;
+    completed_reps: number | null;
+    weight_kg: number | null;
+    is_warmup: boolean;
+  }[];
+};
+
+/**
+ * Umbral de la heurística de abajo: qué fracción de los ejercicios de hoy alcanza para
+ * decir "este es el mismo entrenamiento". Ver el comentario de la función.
+ */
+const SAME_SESSION_OVERLAP = 0.5;
+
+/**
+ * El entrenamiento ya completado hoy que mejor coincide con estos ejercicios, si existe.
+ *
+ * `workouts` no guarda a qué rutina o día perteneció — no hay columna para eso (ver
+ * 00001_initial_schema.sql). Para distinguir "ya hice ESTE día hoy" de "entrené otro día
+ * de la rutina más temprano hoy" se compara qué ejercicios quedaron registrados: si al
+ * menos la mitad de los de hoy aparecen en un entrenamiento de hoy, se asume que es el
+ * mismo. Agregar una columna que ligue el entrenamiento a rutina+día resolvería esto sin
+ * heurística, pero es un cambio a cómo se guarda un entrenamiento — de un alcance mayor
+ * al de esta lectura de item [19].
+ */
+export async function getTodaysCompletedWorkoutForExercises(exerciseIds: string[]): Promise<TodaysCompletedWorkout | null> {
+  if (exerciseIds.length === 0) return null;
+
+  const client = requireSupabase();
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await client
+    .from('workouts')
+    .select('id, ended_at, workout_sets(exercise_id, set_number, completed_reps, weight_kg, is_warmup)')
+    .eq('status', 'completed')
+    .gte('ended_at', startOfDay.toISOString())
+    .order('ended_at', { ascending: false })
+    .limit(5);
+
+  if (error) throw error;
+
+  const idSet = new Set(exerciseIds);
+  let best: { row: TodaysWorkoutRow; overlap: number } | null = null;
+
+  for (const row of (data ?? []) as TodaysWorkoutRow[]) {
+    const logged = new Set(row.workout_sets.map((set) => set.exercise_id));
+    const overlap = [...logged].filter((id) => idSet.has(id)).length / idSet.size;
+    if (overlap >= SAME_SESSION_OVERLAP && (!best || overlap > best.overlap)) {
+      best = { row, overlap };
+    }
+  }
+
+  if (!best) return null;
+
+  return {
+    workoutId: best.row.id,
+    endedAt: best.row.ended_at,
+    sets: best.row.workout_sets
+      .filter((set) => !set.is_warmup)
+      .map((set) => ({
+        exerciseId: set.exercise_id,
+        setNumber: set.set_number,
+        completedReps: set.completed_reps,
+        weightKg: set.weight_kg
+      }))
+      .sort((a, b) => a.setNumber - b.setNumber)
+  };
+}
+
 function formatWeight(weight: number): string {
   return Number.isInteger(weight) ? String(weight) : weight.toFixed(1).replace('.', ',');
 }

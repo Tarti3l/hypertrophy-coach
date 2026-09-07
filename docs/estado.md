@@ -204,6 +204,46 @@ entrada con fecha y de qué item salió.
     mirar el dueño del repo directamente, o autorizar puntualmente una
     consulta con esa clave. No se tocó ninguna rutina ajena mientras tanto.
 
+- **2026-09-06, item [19]:** durante las pruebas manuales en Expo Web, con
+  Fast Refresh recargando el archivo repetidas veces, el borrador de sesión en
+  AsyncStorage (item [3]) apareció una vez con todas las series en
+  `completed: false` pese a que `startedAt` seguía siendo el de varias horas
+  antes — es decir, se perdieron los datos sin cerrar la app. Probable carrera
+  entre los efectos de hidratación y persistencia de `useWorkoutSession.ts` al
+  remontar muchas veces seguidas en poco tiempo. No es un escenario real de
+  uso (un socio no dispara Fast Refresh), y no se repitió con una carga normal
+  de la pantalla; no se investigó más ni se corrigió, queda fuera del alcance
+  del [19]. Si se repite reportado por un usuario real, hay que revisar la
+  carrera en esos dos efectos.
+- **2026-09-06, item [19]:** investigado el reporte de "el mismo ejercicio dos
+  veces" en el modo lista. Se descartaron las dos causas de datos más
+  probables, verificado por consulta directa a Supabase: ni el catálogo
+  `exercises` tiene dos filas con el mismo nombre (91 filas, comparadas por
+  nombre normalizado, cero grupos con más de una), ni "La rutina para estar
+  como cbum" tiene un `exercise_id` repetido dentro de un mismo día (27 filas
+  en 5 días, cero duplicados). El único punto del código donde una sesión en
+  curso puede terminar con el mismo ejercicio dos veces en la lista sin que
+  ningún dato lo impida es "Cambiar por otro" dentro de `ActiveWorkoutScreen`:
+  su `ExerciseSwapSheet` no recibe `disabledExerciseIds` (a diferencia del que
+  usa `RoutineBuilderScreen`, que sí lo bloquea desde este item), así que
+  elegir ahí un ejercicio que ya está en otro grupo del mismo día es posible
+  hoy. No confirmado con el texto exacto del aviso que vio el dueño del repo;
+  si vuelve a pasar, conviene revisar primero esa pantalla y ese flujo.
+- **2026-09-06, item [19]:** el campo de nombre de rutina, paso 5 del
+  constructor, sigue sin aparecer vacío pese a haber quitado el
+  `placeholder="Mi rutina"` (criterio de aceptación del item, sección
+  "Alcance"). Verificado en vivo: en una rutina nueva, `name` arranca en
+  `''`, pero un efecto (`RoutineBuilderScreen.tsx`, cerca de la línea 256) lo
+  llena con `template.name` en cuanto se elige una plantilla, así que al
+  llegar al paso 5 el campo ya trae un valor real —por ejemplo
+  "Torso · Pierna · Torso · Torso · Pierna"—, no vacío. Quitar el placeholder
+  arregló que un campo vacío se leyera como si tuviera un valor, pero no
+  toca este otro mecanismo, que llena el campo con un valor real por una vía
+  distinta. No corregido: falta decidir si el campo debe quedar realmente
+  vacío (y entonces hay que quitar o mover ese `setName(template.name)`) o si
+  el criterio de aceptación del plan debe ajustarse porque un nombre sugerido
+  es mejor UX que un campo en blanco.
+
 ## Preguntas abiertas
 
 - **Objetivos nutricionales adaptativos:** ¿hay historial de peso corporal e

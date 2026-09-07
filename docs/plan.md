@@ -299,6 +299,24 @@ que después tocan el [13], el [8] y el [9]. Hacerlo después obliga a rehacerlo
     máquina en el gimnasio.
   - En `RoutineBuilderScreen`, paso 5, se quita el `placeholder="Mi rutina"` del
     campo de nombre: queda vacío.
+  - **Orden dentro de modo ejercicio** (corrección tras revisión en el teléfono):
+    el registro de series va pegado al nombre del ejercicio, arriba de todo lo
+    demás. La única excepción es la nota de "Punto de partida"/sugerencia de
+    progresión, que se queda encima del registro porque es la instrucción de qué
+    peso poner, no información extra. «¿Cómo se hace?», «¿Por qué este
+    ejercicio?», el agarre y «Cambiar por otro»/«Saltar» bajan debajo del
+    registro.
+  - **Entrenamiento ya completado hoy** (corrección tras revisión en el
+    teléfono): al volver a entrar a la misma rutina y día después de haberlo
+    terminado ese mismo día, no arranca una sesión nueva en blanco. Se muestra
+    en modo lectura lo que ya se registró, junto con un aviso ("Ya completaste
+    este entrenamiento hoy"). Sigue siendo un solo entrenamiento guardado, no
+    dos. Hay un acceso secundario y explícito, "Entrenar de nuevo", para quien sí
+    quiera una segunda sesión ese día; editar la ya guardada queda fuera de
+    alcance. La detección es una lectura nueva sobre `workouts`/`workout_sets`
+    (superposición de ejercicios registrados hoy contra los del día actual, ver
+    `getTodaysCompletedWorkoutForExercises`), sin tocar el borrador del [3] ni
+    cómo se guarda un entrenamiento.
 - **Criterio de aceptación:** `pnpm typecheck` pasa; en modo ejercicio no se ve nada
   que no sea el ejercicio actual y sus series; un socio identifica sin ayuda por qué
   músculo empezar y llega a registrar su primera serie sin leer instrucciones; el

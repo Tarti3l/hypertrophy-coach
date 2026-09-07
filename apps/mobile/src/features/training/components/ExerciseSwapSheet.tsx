@@ -27,6 +27,13 @@ type ExerciseSwapSheetProps = {
   catalog: TrainingExercise[];
   selectedExerciseId: string | null;
   catalogError?: string | null;
+  /**
+   * Ejercicios que no se pueden elegir acá — hoy, los que ya están en este mismo día de
+   * la rutina. Se muestran igual (buscarlos y no encontrarlos sería más confuso), pero
+   * sin poder tocarlos y con el motivo en una línea.
+   */
+  disabledExerciseIds?: Set<string>;
+  disabledReason?: string;
   onSelect: (exercise: TrainingExercise) => void;
   onClose: () => void;
 };
@@ -55,6 +62,8 @@ export function ExerciseSwapSheet({
   catalog,
   selectedExerciseId,
   catalogError = null,
+  disabledExerciseIds,
+  disabledReason,
   onSelect,
   onClose
 }: ExerciseSwapSheetProps) {
@@ -161,6 +170,7 @@ export function ExerciseSwapSheet({
 
           {results.map((exercise) => {
             const isSelected = exercise.id === selectedExerciseId;
+            const isDisabled = Boolean(disabledExerciseIds?.has(exercise.id)) && !isSelected;
 
             return (
               <View key={exercise.id}>
@@ -177,10 +187,11 @@ export function ExerciseSwapSheet({
                 <View style={[styles.row, isSelected && styles.rowOn]}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${exercise.name}. ${exercise.muscleGroup}. ${DIFFICULTY_LABELS[exercise.difficulty]}`}
+                    accessibilityState={{ selected: isSelected, disabled: isDisabled }}
+                    accessibilityLabel={`${exercise.name}. ${exercise.muscleGroup}. ${DIFFICULTY_LABELS[exercise.difficulty]}${isDisabled && disabledReason ? `. ${disabledReason}` : ''}`}
+                    disabled={isDisabled}
                     onPress={() => onSelect(exercise)}
-                    style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}
+                    style={({ pressed }) => [styles.rowMain, isDisabled && styles.rowMainDisabled, pressed && !isDisabled && styles.pressed]}
                   >
                     <View style={styles.avatar}>
                       <Icon name={equipmentIcon(exercise.equipment)} color={colors.accent} size={24} />
@@ -193,7 +204,11 @@ export function ExerciseSwapSheet({
                       <Text style={styles.rowMeta} numberOfLines={1}>
                         {equipmentLabels[exercise.equipment]} · {DIFFICULTY_LABELS[exercise.difficulty]}
                       </Text>
-                      <Text style={styles.rowMuscles} numberOfLines={1}>{exercise.muscleGroup}</Text>
+                      {isDisabled && disabledReason ? (
+                        <Text style={styles.rowDisabledReason} numberOfLines={1}>{disabledReason}</Text>
+                      ) : (
+                        <Text style={styles.rowMuscles} numberOfLines={1}>{exercise.muscleGroup}</Text>
+                      )}
                     </View>
 
                     {isSelected ? <Icon name="check" color={colors.accent} size={20} /> : null}
@@ -445,6 +460,7 @@ function createStyles(colors: ThemeColors) {
     row: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: 'row' },
     rowOn: { backgroundColor: colors.accentSoft, borderBottomColor: colors.accentSoft, borderRadius: radii.sm },
     rowMain: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: spacing.md, minHeight: 76, minWidth: 0, paddingVertical: spacing.sm },
+    rowMainDisabled: { opacity: 0.45 },
     avatar: {
       alignItems: 'center',
       backgroundColor: colors.surface,
@@ -460,6 +476,7 @@ function createStyles(colors: ThemeColors) {
     rowNameOn: { color: colors.accent },
     rowMeta: { ...type.small, color: colors.textMuted },
     rowMuscles: { ...type.small, color: colors.textMuted, fontSize: 12 },
+    rowDisabledReason: { ...type.small, color: colors.warning, fontSize: 12 },
     infoButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 44 },
 
     backdrop: { backgroundColor: 'rgba(0,0,0,0.45)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },

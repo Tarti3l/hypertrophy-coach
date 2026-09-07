@@ -193,30 +193,32 @@ export function SetTracker({
                 {set.setNumber}
               </Text>
               <View style={styles.inputColumn}>
-                <TextInput
-                  accessibilityLabel={`${requiresWeight ? 'Peso' : 'Lastre'} en kg, serie ${set.setNumber}${isWarmup ? ', calentamiento' : ''}`}
-                  value={set.weightKg}
-                  onChangeText={(value) => onUpdateSet(set.setNumber, 'weightKg', value)}
-                  keyboardType="numeric"
-                  inputMode="decimal"
-                  editable={!set.completed && !disabled}
-                  placeholder={requiresWeight ? 'kg' : 'opcional'}
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.input}
-                />
+                <View style={styles.inputBox}>
+                  <TextInput
+                    accessibilityLabel={`${requiresWeight ? 'Peso' : 'Lastre'} en kg, serie ${set.setNumber}${isWarmup ? ', calentamiento' : ''}`}
+                    value={set.weightKg}
+                    onChangeText={(value) => onUpdateSet(set.setNumber, 'weightKg', value)}
+                    keyboardType="numeric"
+                    inputMode="decimal"
+                    editable={!set.completed && !disabled}
+                    style={styles.input}
+                  />
+                </View>
+                <Text style={styles.unitLabel}>kg</Text>
               </View>
               <View style={styles.inputColumn}>
-                <TextInput
-                  accessibilityLabel={`Repeticiones, serie ${set.setNumber}`}
-                  value={set.repetitions}
-                  onChangeText={(value) => onUpdateSet(set.setNumber, 'repetitions', value)}
-                  keyboardType="numeric"
-                  inputMode="numeric"
-                  editable={!set.completed && !disabled}
-                  placeholder="reps"
-                  placeholderTextColor={colors.textMuted}
-                  style={styles.input}
-                />
+                <View style={styles.inputBox}>
+                  <TextInput
+                    accessibilityLabel={`Repeticiones, serie ${set.setNumber}`}
+                    value={set.repetitions}
+                    onChangeText={(value) => onUpdateSet(set.setNumber, 'repetitions', value)}
+                    keyboardType="numeric"
+                    inputMode="numeric"
+                    editable={!set.completed && !disabled}
+                    style={styles.input}
+                  />
+                </View>
+                <Text style={styles.unitLabel}>reps</Text>
               </View>
               <Pressable
                 accessibilityRole="checkbox"
@@ -338,7 +340,13 @@ function createStyles(colors: ThemeColors) {
     tableHeader: { alignItems: 'center', flexDirection: 'row', minHeight: 34, paddingHorizontal: spacing.sm },
     columnLabel: { ...type.eyebrow, color: colors.textMuted },
     seriesColumn: { width: 38 },
-    inputColumn: { flex: 1, minWidth: 0 },
+    inputColumn: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: spacing.xs, minWidth: 0 },
+    // Antes el campo no tenía borde propio y "kg"/"reps" vivían como placeholder
+    // adentro: un campo vacío se leía como una etiqueta, no como algo para tocar.
+    // El recuadro es el afordance de "acá se escribe"; la unidad al costado no
+    // desaparece cuando hay un valor cargado.
+    inputBox: { borderColor: colors.line, borderRadius: radii.sm, borderWidth: 1, flex: 1, height: 44, justifyContent: 'center', minWidth: 0, paddingHorizontal: spacing.sm },
+    unitLabel: { ...type.small, color: colors.textMuted },
     actionColumn: { width: 64 },
 
     // La banda separa el calentamiento de las series que sí cuentan. Sin ella, cuatro

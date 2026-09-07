@@ -24,7 +24,7 @@ import { RestTimer } from '../components/RestTimer';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useProgression } from '../hooks/useProgression';
 import { getRoutine } from '../services/routineRepository';
-import { equipmentLabels } from '../services/exerciseCatalog';
+import { equipmentLabels, normalizeExerciseName } from '../services/exerciseCatalog';
 import { fetchMuscleGroups } from '../services/splitTemplates';
 import { Routine } from '../types/routine';
 import { DEFAULT_REST_SECONDS, DEFAULT_TRANSITION_SECONDS, useRestTimer } from '../hooks/useRestTimer';
@@ -380,9 +380,32 @@ export function ActiveWorkoutScreen() {
 
   const progression = useProgression(currentExercise?.id ?? null, currentExercise?.muscleGroup ?? '', targetReps);
 
+  /**
+   * Ejercicios ya presentes hoy, para no dejar "Cambiar por otro" meter un duplicado
+   * (mismo bloqueo, por nombre normalizado, que ya tiene RoutineBuilderScreen). Sin
+   * esto, elegir acá un ejercicio que ya está en otro grupo del mismo día dejaba el
+   * mismo ejercicio dos veces en modo lista.
+   */
+  const disabledExerciseIds = useMemo(() => {
+    if (!isSwapOpen || !currentExercise) return new Set<string>();
+    const usedNames = new Set(
+      exercises
+        .filter((exercise) => exercise.id !== currentExercise.id)
+        .map((exercise) => normalizeExerciseName(exercise.name))
+    );
+    if (usedNames.size === 0) return new Set<string>();
+    return new Set(
+      catalogExercises
+        .filter((exercise) => usedNames.has(normalizeExerciseName(exercise.name)))
+        .map((exercise) => exercise.id)
+    );
+  }, [isSwapOpen, currentExercise, exercises, catalogExercises]);
+
   const applySwap = useCallback((replacement: TrainingExercise) => {
     setIsSwapOpen(false);
     if (!currentExercise) return;
+    // Defensa además del deshabilitado en la lista: por si algo dispara onSelect igual.
+    if (disabledExerciseIds.has(replacement.id)) return;
 
     // La clave es el id ORIGINAL de la rutina, no el que se está viendo: así cambiar
     // dos veces seguidas no deja huérfana la primera sustitución.
@@ -390,7 +413,7 @@ export function ActiveWorkoutScreen() {
     setSwaps((current) => ({ ...current, [originalId]: replacement }));
     setCurrentExerciseId(replacement.id);
     setShowHowTo(false);
-  }, [currentExercise, swaps]);
+  }, [currentExercise, swaps, disabledExerciseIds]);
 
   const skipCurrent = useCallback(() => {
     if (!currentExercise) return;
@@ -801,6 +824,8 @@ export function ActiveWorkoutScreen() {
           catalog={catalogExercises}
           selectedExerciseId={currentExercise.id}
           catalogError={catalogError}
+          disabledExerciseIds={disabledExerciseIds}
+          disabledReason="Ya está en tu rutina de hoy"
           onSelect={applySwap}
           onClose={() => setIsSwapOpen(false)}
         />

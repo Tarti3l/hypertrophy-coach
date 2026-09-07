@@ -170,6 +170,15 @@ export async function findExerciseBySlug(slug: string): Promise<TrainingExercise
  * `group_rank` viene de docs/rutinas.md: el 1 de cada grupo es el que la app sugiere
  * por defecto, y en los grupos con evidencia fuerte ese orden no es arbitrario.
  */
+/**
+ * Compara ejercicios por nombre sin que un espacio o una mayúscula cuenten como
+ * distintos. El catálogo puede tener dos filas para el mismo ejercicio con ids
+ * distintos ("gemelos"); bloquear duplicados solo por id los deja pasar.
+ */
+export function normalizeExerciseName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 export function exercisesForGroup(catalog: TrainingExercise[], group: MuscleGroupSlug): TrainingExercise[] {
   return catalog
     .filter((exercise) => exercise.group === group)

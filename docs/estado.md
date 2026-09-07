@@ -18,7 +18,7 @@ empiece una sesión lo lee primero.
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Era un typo: `'abdomen'` por `'abs'` |
 | [T2] CI mínimo | hecho | #11 | Corre typecheck en cada PR. No bloquea el merge: los rulesets no se aplican en repos privados del plan gratuito |
 | [12] Rango de series efectivas y aviso de subir peso | hecho | #12 | 8-12 fijo, 3 series efectivas, aviso una vez por ejercicio. Migraciones 00021 y 00022 |
-| [19] Partir la pantalla de entrenamiento en dos modos | en revisión | #14 | Los tres puntos de la revisión en el teléfono están implementados y verificados en Expo Web; falta la verificación en el teléfono del dueño del repo. Quedan tres hallazgos abiertos sin corregir (ver "Hallazgos que cambian el plan"): el campo de nombre de rutina no sale vacío como pide el criterio de aceptación, la causa real del "ejercicio duplicado" no está confirmada, y la decisión de qué hacer con rutinas que ya tengan un duplicado real (b) sigue pendiente — ninguno bloquea el merge |
+| [19] Partir la pantalla de entrenamiento en dos modos | en revisión | #14 | Los tres puntos de la revisión en el teléfono, más el bloqueo de ejercicio duplicado (constructor y "Cambiar por otro") y el campo de nombre de rutina vacío, están implementados y verificados en Expo Web. Falta la verificación en el teléfono del dueño del repo. Un hallazgo queda abierto sin corregir, no bloquea el merge: sospecha de carrera en el borrador del [3] solo bajo Fast Refresh reiterado (ver "Hallazgos que cambian el plan") |
 | [13] Resolver la primera sesión sin historial | pendiente | | Punto de abandono más probable de la app |
 | [14] Entrenar entero sin conexión | pendiente | | El más grande (M) |
 | [15] Cerrar la sincronización de sesiones offline | pendiente | | |
@@ -215,34 +215,23 @@ entrada con fecha y de qué item salió.
   de la pantalla; no se investigó más ni se corrigió, queda fuera del alcance
   del [19]. Si se repite reportado por un usuario real, hay que revisar la
   carrera en esos dos efectos.
-- **2026-09-06, item [19]:** investigado el reporte de "el mismo ejercicio dos
-  veces" en el modo lista. Se descartaron las dos causas de datos más
-  probables, verificado por consulta directa a Supabase: ni el catálogo
-  `exercises` tiene dos filas con el mismo nombre (91 filas, comparadas por
-  nombre normalizado, cero grupos con más de una), ni "La rutina para estar
-  como cbum" tiene un `exercise_id` repetido dentro de un mismo día (27 filas
-  en 5 días, cero duplicados). El único punto del código donde una sesión en
-  curso puede terminar con el mismo ejercicio dos veces en la lista sin que
-  ningún dato lo impida es "Cambiar por otro" dentro de `ActiveWorkoutScreen`:
-  su `ExerciseSwapSheet` no recibe `disabledExerciseIds` (a diferencia del que
-  usa `RoutineBuilderScreen`, que sí lo bloquea desde este item), así que
-  elegir ahí un ejercicio que ya está en otro grupo del mismo día es posible
-  hoy. No confirmado con el texto exacto del aviso que vio el dueño del repo;
-  si vuelve a pasar, conviene revisar primero esa pantalla y ese flujo.
-- **2026-09-06, item [19]:** el campo de nombre de rutina, paso 5 del
-  constructor, sigue sin aparecer vacío pese a haber quitado el
-  `placeholder="Mi rutina"` (criterio de aceptación del item, sección
-  "Alcance"). Verificado en vivo: en una rutina nueva, `name` arranca en
-  `''`, pero un efecto (`RoutineBuilderScreen.tsx`, cerca de la línea 256) lo
-  llena con `template.name` en cuanto se elige una plantilla, así que al
-  llegar al paso 5 el campo ya trae un valor real —por ejemplo
-  "Torso · Pierna · Torso · Torso · Pierna"—, no vacío. Quitar el placeholder
-  arregló que un campo vacío se leyera como si tuviera un valor, pero no
-  toca este otro mecanismo, que llena el campo con un valor real por una vía
-  distinta. No corregido: falta decidir si el campo debe quedar realmente
-  vacío (y entonces hay que quitar o mover ese `setName(template.name)`) o si
-  el criterio de aceptación del plan debe ajustarse porque un nombre sugerido
-  es mejor UX que un campo en blanco.
+- **2026-09-06, item [19] — resuelto:** causa confirmada del reporte de "el
+  mismo ejercicio dos veces" en el modo lista. No es un problema de datos:
+  verificado por consulta directa, ni el catálogo `exercises` tiene dos filas
+  con el mismo nombre (91 filas, comparadas por nombre normalizado, cero
+  grupos con más de una) ni "La rutina para estar como cbum" tiene un
+  `exercise_id` repetido dentro de un mismo día (27 filas en 5 días, cero
+  duplicados). Reproducido en vivo: dentro de una sesión, "Cambiar por otro"
+  en `ActiveWorkoutScreen` no tenía ningún bloqueo (a diferencia del que ya
+  usa `RoutineBuilderScreen`) — elegir ahí un ejercicio que ya estaba en otro
+  grupo del mismo día ("Prensa de piernas 45°" → "Sentadilla hack", que ya
+  estaba en ese día) dejaba el mismo ejercicio dos veces en la lista, ambos
+  marcados "Seguí acá". Corregido aplicando el mismo bloqueo por id + nombre
+  normalizado a esa pantalla; `normalizeExerciseName` se movió a
+  `services/exerciseCatalog.ts` para que las dos pantallas compartan la misma
+  regla en vez de cada una con su copia. Reverificado: los mismos ejercicios
+  que antes se duplicaban ahora aparecen atenuados con "Ya está en tu rutina
+  de hoy" y no se pueden elegir.
 
 ## Preguntas abiertas
 

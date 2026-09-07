@@ -15,7 +15,7 @@ import { ExerciseSwapSheet } from '../components/ExerciseSwapSheet';
 import { Stepper } from '../components/Stepper';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useSplitTemplates } from '../hooks/useSplitTemplates';
-import { equipmentLabels, exercisesForGroup, exercisesForGroupByLevel } from '../services/exerciseCatalog';
+import { equipmentLabels, exercisesForGroup, exercisesForGroupByLevel, normalizeExerciseName } from '../services/exerciseCatalog';
 import { suitsLevel, useKnowledgeLevel } from '../hooks/useKnowledgeLevel';
 import { templateForDays } from '../services/splitTemplates';
 import { computeWeeklyVolume, formatSets, VolumeEntry } from '../services/volume';
@@ -92,11 +92,6 @@ function groupSlotsByMuscle(slots: BuilderSlot[]): { group: MuscleGroupSlug; slo
 
 let slotCounter = 0;
 const nextKey = () => `slot-${(slotCounter += 1)}`;
-
-/** Para comparar ejercicios por nombre sin que un espacio o una mayúscula cuenten como distintos. */
-function normalizeExerciseName(name: string): string {
-  return name.trim().toLowerCase();
-}
 
 const DAY_OPTIONS = Array.from(
   { length: MAX_DAYS_PER_WEEK - MIN_DAYS_PER_WEEK + 1 },
@@ -257,9 +252,11 @@ export function RoutineBuilderScreen() {
   );
 
   // Rutina nueva: en cuanto hay catálogo y plantilla, proponemos el split completo.
+  // El nombre queda vacío a propósito: un default que nadie mira termina siendo el
+  // nombre real de la rutina, y el nombre de la plantilla ("Torso · Pierna · ...")
+  // no es un nombre. Si algún día se sugiere uno, va como ayuda debajo del campo.
   useEffect(() => {
     if (routineId || !isReady || days.length > 0 || !template) return;
-    setName(template.name);
     setDays(buildFromTemplate(template));
   }, [routineId, isReady, days.length, template, buildFromTemplate]);
 

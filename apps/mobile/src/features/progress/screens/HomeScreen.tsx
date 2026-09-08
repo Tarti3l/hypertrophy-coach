@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,12 +15,35 @@ import { WeeklyCalendar } from '../components/WeeklyCalendar';
 import { usePendingWorkouts } from '../hooks/usePendingWorkouts';
 import { useProgressSummary } from '../hooks/useProgressSummary';
 
+/** Cuánto se muestra el festejo antes de desaparecer solo. */
+const CELEBRATION_DURATION_MS = 5000;
+
 export function HomeScreen() {
   const router = useRouter();
+  const { justFinished } = useLocalSearchParams<{ justFinished?: string }>();
   const { routines, isLoading: areRoutinesLoading, error: routinesError, reload: reloadRoutines } = useRoutines();
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  /**
+   * Festejo temporal al volver de un entrenamiento recién terminado (ver
+   * ActiveWorkoutScreen). No es un diálogo: no bloquea nada, desaparece solo y también
+   * se puede cerrar a mano. El parámetro se limpia enseguida para que no vuelva a
+   * aparecer si el socio navega de acá para allá dentro de Inicio.
+   */
+  const [showCelebration, setShowCelebration] = useState(false);
+  useEffect(() => {
+    if (!justFinished) return;
+    setShowCelebration(true);
+    router.setParams({ justFinished: undefined });
+  }, [justFinished, router]);
+
+  useEffect(() => {
+    if (!showCelebration) return;
+    const timer = setTimeout(() => setShowCelebration(false), CELEBRATION_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [showCelebration]);
 
   const { profileError, refreshProfile, signOut } = useAuth();
   const { completedDates, streakDays, isLoading, error, hasData, reload } = useProgressSummary();
@@ -45,6 +68,20 @@ export function HomeScreen() {
           <Eyebrow>{formatToday()}</Eyebrow>
           <Text style={styles.title}>Tu semana, a tu ritmo</Text>
         </View>
+
+        {showCelebration ? (
+          <View accessibilityLiveRegion="polite" style={styles.celebration}>
+            <Text style={styles.celebrationText}>¡Bien ahí! Entrenamiento registrado.</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar aviso"
+              onPress={() => setShowCelebration(false)}
+              style={styles.celebrationClose}
+            >
+              <Text style={styles.celebrationCloseText}>Cerrar</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {pendingCount > 0 ? (
           blockedCount > 0 ? (
@@ -168,6 +205,19 @@ function createStyles(colors: ThemeColors) {
     syncAction: { color: colors.accent, fontFamily: typography.body, fontSize: 13, fontWeight: '700' },
     banner: { backgroundColor: colors.dangerSoft, borderRadius: 14, marginTop: spacing.md, padding: spacing.md },
     bannerText: { ...type.small, color: colors.text },
+    celebration: {
+      alignItems: 'center',
+      backgroundColor: colors.accentSoft,
+      borderRadius: 14,
+      flexDirection: 'row',
+      gap: spacing.sm,
+      justifyContent: 'space-between',
+      marginTop: spacing.md,
+      padding: spacing.md
+    },
+    celebrationText: { ...type.small, color: colors.accent, flex: 1, fontWeight: '700', minWidth: 0 },
+    celebrationClose: { justifyContent: 'center', minHeight: 32 },
+    celebrationCloseText: { ...type.small, color: colors.accent, fontWeight: '700' },
     footer: { alignItems: 'flex-start', borderColor: colors.line, borderTopWidth: 1, gap: spacing.xs, marginTop: spacing.xl, paddingTop: spacing.md },
     textButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44 },
     textButtonText: { color: colors.accent, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },

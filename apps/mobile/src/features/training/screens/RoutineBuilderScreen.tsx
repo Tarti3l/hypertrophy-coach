@@ -15,7 +15,7 @@ import { ExerciseSwapSheet } from '../components/ExerciseSwapSheet';
 import { Stepper } from '../components/Stepper';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useSplitTemplates } from '../hooks/useSplitTemplates';
-import { equipmentLabels, exercisesForGroup, exercisesForGroupByLevel } from '../services/exerciseCatalog';
+import { equipmentLabels, exercisesForGroup, exercisesForGroupByLevel, normalizeExerciseName } from '../services/exerciseCatalog';
 import { suitsLevel, useKnowledgeLevel } from '../hooks/useKnowledgeLevel';
 import { templateForDays } from '../services/splitTemplates';
 import { computeWeeklyVolume, formatSets, VolumeEntry } from '../services/volume';
@@ -252,9 +252,11 @@ export function RoutineBuilderScreen() {
   );
 
   // Rutina nueva: en cuanto hay catálogo y plantilla, proponemos el split completo.
+  // El nombre queda vacío a propósito: un default que nadie mira termina siendo el
+  // nombre real de la rutina, y el nombre de la plantilla ("Torso · Pierna · ...")
+  // no es un nombre. Si algún día se sugiere uno, va como ayuda debajo del campo.
   useEffect(() => {
     if (routineId || !isReady || days.length > 0 || !template) return;
-    setName(template.name);
     setDays(buildFromTemplate(template));
   }, [routineId, isReady, days.length, template, buildFromTemplate]);
 
@@ -464,10 +466,44 @@ export function RoutineBuilderScreen() {
     );
   }, [template, weekPlan]);
 
+  /**
+   * Ejercicios que ya están en este día, para no dejar agregar el mismo dos veces.
+   * En un swap de slot se excluye ese propio slot: si no, el ejercicio que ya tiene
+   * asignado aparecería tildado de "ya está en tu rutina hoy" contra sí mismo.
+   *
+   * El bloqueo es por nombre normalizado (trim + minúsculas), no solo por id: el
+   * catálogo puede tener dos filas para el mismo ejercicio con ids distintos, y
+   * bloquear solo por id dejaría agregar ese "gemelo" sin avisar nada.
+   */
+  const disabledExerciseIds = useMemo(() => {
+    if (!swapTarget || swapTarget.kind === 'cardio') return new Set<string>();
+    const day = days.find((item) => item.dayIndex === swapTarget.dayIndex);
+    if (!day) return new Set<string>();
+    const excludeKey = swapTarget.kind === 'slot' ? swapTarget.slotKey : null;
+
+    const usedNames = new Set(
+      day.slots
+        .filter((slot) => slot.key !== excludeKey)
+        .map((slot) => catalogById.get(slot.exerciseId)?.name)
+        .filter((name): name is string => Boolean(name))
+        .map(normalizeExerciseName)
+    );
+    if (usedNames.size === 0) return new Set<string>();
+
+    return new Set(
+      catalog.exercises
+        .filter((exercise) => usedNames.has(normalizeExerciseName(exercise.name)))
+        .map((exercise) => exercise.id)
+    );
+  }, [swapTarget, days, catalogById, catalog.exercises]);
+
   const handleSwapSelect = useCallback((exercise: TrainingExercise) => {
     const target = swapTarget;
     setSwapTarget(null);
     if (!target) return;
+
+    // Defensa además del deshabilitado en la lista: por si algo dispara onSelect igual.
+    if (disabledExerciseIds.has(exercise.id)) return;
 
     if (target.kind === 'cardio') { setCardioExerciseId(exercise.id); setIsDirty(true); return; }
 
@@ -497,7 +533,7 @@ export function RoutineBuilderScreen() {
         isOptional: false
       }]
     }));
-  }, [swapTarget, patchSlot]);
+  }, [swapTarget, patchSlot, disabledExerciseIds]);
 
   /**
    * El reparto que sale de los días elegidos. Se muestra antes de los ejercicios
@@ -835,8 +871,6 @@ export function RoutineBuilderScreen() {
           <TextInput
             accessibilityLabel="Nombre de la rutina"
             onChangeText={(value) => { setName(value); setIsDirty(true); }}
-            placeholder="Mi rutina"
-            placeholderTextColor={colors.textMuted}
             style={styles.input}
             value={name}
           />
@@ -1244,6 +1278,8 @@ export function RoutineBuilderScreen() {
           catalog={catalog.exercises}
           selectedExerciseId={selectedIdFor(swapTarget, days, cardioExerciseId)}
           catalogError={catalog.error}
+          disabledExerciseIds={disabledExerciseIds}
+          disabledReason="Ya está en tu rutina de hoy"
           onSelect={handleSwapSelect}
           onClose={() => setSwapTarget(null)}
         />

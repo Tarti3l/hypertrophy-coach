@@ -11,7 +11,11 @@ import { describeSupabaseError } from '@/lib/supabaseErrors';
 import { palette, radii, spacing, ThemeColors, type, typography } from '@/theme/tokens';
 import { SetTracker } from '@/features/progress/components/SetTracker';
 import { formatElapsedTime, useWorkoutSession } from '@/features/progress/hooks/useWorkoutSession';
-import { getLastPerformanceByExercise } from '@/features/progress/services/workoutSessionRepository';
+import {
+  getLastPerformanceByExercise,
+  getTodaysCompletedWorkoutForExercises,
+  TodaysCompletedWorkout
+} from '@/features/progress/services/workoutSessionRepository';
 
 import { EquipmentFilter } from '../components/EquipmentFilter';
 import { ExerciseMediaPreview } from '../components/ExerciseMediaPreview';
@@ -20,10 +24,14 @@ import { RestTimer } from '../components/RestTimer';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useProgression } from '../hooks/useProgression';
 import { getRoutine } from '../services/routineRepository';
-import { equipmentLabels } from '../services/exerciseCatalog';
+import { equipmentLabels, normalizeExerciseName } from '../services/exerciseCatalog';
+import { fetchMuscleGroups } from '../services/splitTemplates';
 import { Routine } from '../types/routine';
 import { DEFAULT_REST_SECONDS, DEFAULT_TRANSITION_SECONDS, useRestTimer } from '../hooks/useRestTimer';
-import { DIFFICULTY_LABELS, EVIDENCE_LABELS, ExerciseFilter, MUSCLE_GROUP_LABELS, MuscleGroupSlug, REGION_LABELS, TrainingExercise } from '../types/training';
+import { EVIDENCE_LABELS, ExerciseFilter, MUSCLE_GROUP_LABELS, MuscleGroupSlug, REGION_LABELS, TrainingExercise } from '../types/training';
+
+/** 'lista' = elegir por dónde seguir. 'ejercicio' = solo el actual y su registro. */
+type ViewMode = 'lista' | 'ejercicio';
 
 export function ActiveWorkoutScreen() {
   const router = useRouter();
@@ -76,6 +84,23 @@ export function ActiveWorkoutScreen() {
 
     return () => { active = false; };
   }, [routineId, routineReloadToken]);
+
+  /**
+   * Qué músculos son "chicos" (antebrazo, pantorrilla, abdomen), para ordenar el modo
+   * lista de grande a chico. Es catálogo — igual que el de ejercicios, se pide una vez
+   * y no pasa nada si falla: el orden cae de vuelta al de aparición en la rutina.
+   */
+  const [smallGroups, setSmallGroups] = useState<Set<MuscleGroupSlug>>(new Set());
+  useEffect(() => {
+    let active = true;
+    void fetchMuscleGroups()
+      .then((groups) => {
+        if (!active) return;
+        setSmallGroups(new Set(groups.filter((group) => group.isSmall).map((group) => group.slug)));
+      })
+      .catch(() => { /* orden por tamaño es una mejora, no algo de lo que dependa la sesión */ });
+    return () => { active = false; };
+  }, []);
 
   /**
    * Los ejercicios del día que se está entrenando, no los de toda la rutina.
@@ -146,11 +171,50 @@ export function ActiveWorkoutScreen() {
   /** null = se abre solo el grupo del ejercicio activo. '' = todos cerrados. */
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
+  /**
+   * Modo lista (elegir por dónde seguir) o modo ejercicio (solo el actual). Tocar un
+   * ejercicio en la lista es lo único que entra en modo ejercicio; terminar todas sus
+   * series es lo único que vuelve solo a la lista (ver el efecto sobre `isCurrentDone`
+   * más abajo). El resto de la pantalla (borrador de sesión, timer, SetTracker) vive
+   * arriba de este estado y no se entera de en qué modo está — por eso cambiar de modo
+   * no puede romper el borrador del [3], el timer, ni el aviso del [12]: ninguno de
+   * esos tres se desmonta ni se reinicia al alternar entre "lista" y "ejercicio".
+   */
+  const [viewMode, setViewMode] = useState<ViewMode>('lista');
+  /** «¿Cómo se hace?» empieza cerrado en cada ejercicio nuevo: el video no es lo primero que se ve. */
+  const [showHowTo, setShowHowTo] = useState(false);
+
   const exerciseIds = useMemo(() => activeExercises.map((exercise) => exercise.id), [activeExercises]);
   // Identifica la sesión para recuperar su borrador tras cerrar y reabrir la app. Sin
   // rutina (sesión libre) no hay borrador que restaurar, igual que antes de este cambio.
   const sessionKey = routineId ? `${routineId}:${dayIndex}` : null;
   const session = useWorkoutSession(exerciseIds, setsByExerciseId, sessionKey);
+
+  /**
+   * Si ya se completó un entrenamiento hoy para este mismo día, se muestra en modo
+   * lectura en vez de arrancar una sesión nueva en blanco: entrar sin querer no debe
+   * dejar un entrenamiento fantasma en el historial. "Entrenar de nuevo" es la salida
+   * explícita para quien sí quiere una segunda sesión — `forceNewSession` la habilita.
+   * No toca el borrador del [3] ni el guardado: es una lectura aparte, ver
+   * getTodaysCompletedWorkoutForExercises.
+   */
+  const [todaysWorkout, setTodaysWorkout] = useState<TodaysCompletedWorkout | null>(null);
+  const [isCheckingToday, setIsCheckingToday] = useState(Boolean(routineId));
+  const [forceNewSession, setForceNewSession] = useState(false);
+
+  useEffect(() => {
+    if (!routineId || exerciseIds.length === 0) {
+      setIsCheckingToday(false);
+      return;
+    }
+    let active = true;
+    setIsCheckingToday(true);
+    void getTodaysCompletedWorkoutForExercises(exerciseIds)
+      .then((found) => { if (active) setTodaysWorkout(found); })
+      .catch(() => { /* si falla la lectura, mejor dejar entrar a una sesión normal que bloquear la pantalla */ })
+      .finally(() => { if (active) setIsCheckingToday(false); });
+    return () => { active = false; };
+  }, [routineId, exerciseIds]);
 
   const rest = useRestTimer();
   /** Duración con la que arrancó el contador: sin esto la barra de progreso miente. */
@@ -226,7 +290,12 @@ export function ActiveWorkoutScreen() {
     }
   }, [currentExerciseId, visibleExercises]);
 
-  /** Los ejercicios del día por músculo, en orden de primera aparición. */
+  /**
+   * Los ejercicios del día por músculo, de grande a chico (el más grande primero,
+   * mientras hay más fuerza), y dentro de cada tamaño en el orden en que aparecen en
+   * la rutina. Si el catálogo de tamaños todavía no llegó, cae al orden de aparición
+   * tal cual estaba antes de este item.
+   */
   const groupedExercises = useMemo(() => {
     const order: (MuscleGroupSlug | null)[] = [];
     const byGroup = new Map<string, { group: MuscleGroupSlug | null; items: TrainingExercise[] }>();
@@ -238,8 +307,16 @@ export function ActiveWorkoutScreen() {
       else { byGroup.set(key, { group: exercise.group, items: [exercise] }); order.push(exercise.group); }
     }
 
-    return order.map((group) => byGroup.get(group ?? 'otros')!);
-  }, [visibleExercises]);
+    const sizeRank = (group: MuscleGroupSlug | null) => (group && smallGroups.has(group) ? 1 : 0);
+    const sortedOrder = order
+      .map((group, index) => ({ group, index }))
+      .sort((a, b) => sizeRank(a.group) - sizeRank(b.group) || a.index - b.index)
+      .map((entry) => entry.group);
+
+    return sortedOrder.map((group) => byGroup.get(group ?? 'otros')!);
+  }, [visibleExercises, smallGroups]);
+
+  const firstGroupKey = groupedExercises[0]?.group ?? (groupedExercises.length > 0 ? 'otros' : null);
 
   const currentExercise = visibleExercises.find((exercise) => exercise.id === currentExerciseId) ?? visibleExercises[0] ?? null;
   const currentSets = currentExercise ? session.setsByExercise[currentExercise.id] : undefined;
@@ -247,6 +324,18 @@ export function ActiveWorkoutScreen() {
   const isCurrentDone = Boolean(currentSets && currentSets.length > 0 && currentSets.every((set) => set.completed));
   const hasLoggedCurrent = Boolean(currentSets?.some((set) => set.completed));
   const canFinish = session.completedSetCount > 0 && !session.isFinishing && !session.isFinished;
+
+  /**
+   * Antes se quedaba en esta misma pantalla con un texto fijo de "guardado". Ahora
+   * vuelve a Inicio, que es donde vive el festejo temporal — ver HomeScreen.
+   */
+  const hasRedirectedAfterFinish = useRef(false);
+  useEffect(() => {
+    if (session.isFinished && !hasRedirectedAfterFinish.current) {
+      hasRedirectedAfterFinish.current = true;
+      router.replace('/(tabs)?justFinished=1');
+    }
+  }, [session.isFinished, router]);
 
   /** El siguiente ejercicio sin terminar, empezando por el que va después del actual. */
   const nextExercise = useMemo(() => {
@@ -258,6 +347,30 @@ export function ActiveWorkoutScreen() {
     }) ?? null;
   }, [visibleExercises, currentIndex, session.setsByExercise]);
 
+  /**
+   * Vuelve sola a la lista cuando el ejercicio actual PASA a estar terminado mientras
+   * se lo está viendo — no server cuando se entra a uno que ya estaba terminado desde
+   * antes (por eso compara contra el valor previo, no contra `true` a secas). "Terminado"
+   * ya incluía el calentamiento antes de este item (ver `isCurrentDone` arriba); esto
+   * dispara igual sin importar si lo que faltaba era una serie o saltar el calentamiento
+   * — cualquier acción que lo complete cuenta, no solo `toggleSet`.
+   */
+  const wasCurrentDoneRef = useRef(isCurrentDone);
+  useEffect(() => {
+    wasCurrentDoneRef.current = isCurrentDone;
+    // Nueva base cada vez que cambia el ejercicio: solo importa la transición dentro
+    // del mismo ejercicio, no el estado con el que llegó uno nuevo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentExercise?.id]);
+
+  useEffect(() => {
+    if (viewMode === 'ejercicio' && isCurrentDone && !wasCurrentDoneRef.current) {
+      setViewMode('lista');
+      setCurrentExerciseId(nextExercise?.id ?? null);
+    }
+    wasCurrentDoneRef.current = isCurrentDone;
+  }, [isCurrentDone, viewMode, nextExercise]);
+
   // Si la rutina fija repeticiones objetivo, esa cifra manda sobre el valor por defecto.
   const targetReps = useMemo(() => {
     if (!currentExercise) return undefined;
@@ -267,24 +380,78 @@ export function ActiveWorkoutScreen() {
 
   const progression = useProgression(currentExercise?.id ?? null, currentExercise?.muscleGroup ?? '', targetReps);
 
+  /**
+   * Ejercicios ya presentes hoy, para no dejar "Cambiar por otro" meter un duplicado
+   * (mismo bloqueo, por nombre normalizado, que ya tiene RoutineBuilderScreen). Sin
+   * esto, elegir acá un ejercicio que ya está en otro grupo del mismo día dejaba el
+   * mismo ejercicio dos veces en modo lista.
+   */
+  const disabledExerciseIds = useMemo(() => {
+    if (!isSwapOpen || !currentExercise) return new Set<string>();
+    const usedNames = new Set(
+      exercises
+        .filter((exercise) => exercise.id !== currentExercise.id)
+        .map((exercise) => normalizeExerciseName(exercise.name))
+    );
+    if (usedNames.size === 0) return new Set<string>();
+    return new Set(
+      catalogExercises
+        .filter((exercise) => usedNames.has(normalizeExerciseName(exercise.name)))
+        .map((exercise) => exercise.id)
+    );
+  }, [isSwapOpen, currentExercise, exercises, catalogExercises]);
+
   const applySwap = useCallback((replacement: TrainingExercise) => {
     setIsSwapOpen(false);
     if (!currentExercise) return;
+    // Defensa además del deshabilitado en la lista: por si algo dispara onSelect igual.
+    if (disabledExerciseIds.has(replacement.id)) return;
 
     // La clave es el id ORIGINAL de la rutina, no el que se está viendo: así cambiar
     // dos veces seguidas no deja huérfana la primera sustitución.
     const originalId = Object.keys(swaps).find((key) => swaps[key].id === currentExercise.id) ?? currentExercise.id;
     setSwaps((current) => ({ ...current, [originalId]: replacement }));
     setCurrentExerciseId(replacement.id);
-  }, [currentExercise, swaps]);
+    setShowHowTo(false);
+  }, [currentExercise, swaps, disabledExerciseIds]);
 
   const skipCurrent = useCallback(() => {
     if (!currentExercise) return;
     setSkipped((current) => current.includes(currentExercise.id) ? current : [...current, currentExercise.id]);
-    if (nextExercise) setCurrentExerciseId(nextExercise.id);
+    if (nextExercise) {
+      setCurrentExerciseId(nextExercise.id);
+      setShowHowTo(false);
+    } else {
+      setViewMode('lista');
+    }
   }, [currentExercise, nextExercise]);
 
-  const isPreparing = isCatalogLoading || isRoutineLoading;
+  /** Tocar un ejercicio en la lista es el único gesto que entra en modo ejercicio. */
+  const openExercise = useCallback((exerciseId: string) => {
+    setCurrentExerciseId(exerciseId);
+    setShowHowTo(false);
+    setViewMode('ejercicio');
+  }, []);
+
+  /** Series de hoy agrupadas por ejercicio, en el orden en que aparecieron en el registro. */
+  const todaysWorkoutByExercise = useMemo(() => {
+    if (!todaysWorkout) return [];
+    const order: string[] = [];
+    const byExercise = new Map<string, TodaysCompletedWorkout['sets']>();
+    for (const set of todaysWorkout.sets) {
+      if (!byExercise.has(set.exerciseId)) order.push(set.exerciseId);
+      const list = byExercise.get(set.exerciseId) ?? [];
+      list.push(set);
+      byExercise.set(set.exerciseId, list);
+    }
+    return order.map((exerciseId) => ({
+      exerciseId,
+      exercise: catalogById.get(exerciseId),
+      sets: byExercise.get(exerciseId)!
+    }));
+  }, [todaysWorkout, catalogById]);
+
+  const isPreparing = isCatalogLoading || isRoutineLoading || isCheckingToday;
   const blockingError = catalogError ?? routineError;
 
   // Solo bloqueamos la pantalla por problemas de carga. Un filtro sin resultados se
@@ -333,12 +500,53 @@ export function ActiveWorkoutScreen() {
     );
   }
 
+  // Ya se entrenó esto hoy: se muestra en modo lectura en vez de arrancar en blanco.
+  // "Entrenar de nuevo" es la única salida hacia una sesión nueva.
+  if (todaysWorkout && !forceNewSession) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.topbar}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Volver" onPress={goBack} style={styles.backButton}>
+              <Text style={styles.backText}>Volver</Text>
+            </Pressable>
+          </View>
+          <View style={styles.headingBlock}>
+            <Eyebrow>{routine ? routine.name : 'Sesión libre'}</Eyebrow>
+            <Text style={styles.title}>Ya completaste este entrenamiento hoy</Text>
+            <Text style={styles.description}>Esto fue lo que registraste:</Text>
+          </View>
+          <View style={styles.logSection}>
+            {todaysWorkoutByExercise.map(({ exerciseId, exercise, sets }) => (
+              <View key={exerciseId} style={styles.readOnlyExercise}>
+                <Text style={styles.readOnlyExerciseName}>{exercise?.name ?? 'Ejercicio'}</Text>
+                <Text style={styles.readOnlyExerciseSets}>
+                  {sets.map((set) => formatReadOnlySet(set)).join(' · ')}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Pressable accessibilityRole="button" onPress={() => setForceNewSession(true)} style={styles.textButton}>
+            <Text style={styles.textButtonText}>Entrenar de nuevo</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  const isListMode = viewMode === 'lista';
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={[styles.content, rest.isRunning && styles.contentWithTimer]}>
         <View style={styles.topbar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Volver al calentamiento" onPress={goBack} style={styles.backButton}>
-            <Text style={styles.backText}>Volver</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isListMode ? 'Volver' : 'Volver a la lista'}
+            onPress={() => (isListMode ? goBack() : setViewMode('lista'))}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>{isListMode ? 'Volver' : 'Volver a la lista'}</Text>
           </Pressable>
           <View style={styles.timerPill}>
             <Icon name="clock" color={colors.accent} size={15} />
@@ -346,53 +554,55 @@ export function ActiveWorkoutScreen() {
           </View>
         </View>
 
-        <View style={styles.headingBlock}>
-          <Eyebrow>{routine ? routine.name : 'Sesión libre'}</Eyebrow>
-          <Text style={styles.title}>
-            {routine ? `Tus ${visibleExercises.length} ejercicios de hoy` : 'Elige qué vas a entrenar'}
-          </Text>
-          <Text style={styles.description}>
-            {routine
-              ? 'Ve marcando cada serie. Si una máquina está ocupada, cambia el ejercicio sin perder el día.'
-              : 'Sin rutina cargada: elige del catálogo lo que quieras registrar.'}
-          </Text>
-        </View>
-
-        {/* Avisos que antes eran silencios */}
-        {missingCount > 0 ? (
-          <View style={[styles.notice, styles.noticeWarning]}>
-            <Text style={styles.noticeText}>
-              {missingCount === 1
-                ? 'Un ejercicio de tu rutina ya no está disponible y no aparece aquí.'
-                : `${missingCount} ejercicios de tu rutina ya no están disponibles y no aparecen aquí.`}
-              {' '}Ábrela para reemplazarlos.
+        {/* Modo lista: nunca se desmonta al pasar a modo ejercicio, solo se oculta. Así
+            el borrador de sesión del [3], el timer y el estado interno de SetTracker
+            (el aviso del [12]) no se reinician al ir y volver entre modos. */}
+        <View style={isListMode ? undefined : styles.hidden}>
+          <View style={styles.headingBlock}>
+            <Eyebrow>{routine ? routine.name : 'Sesión libre'}</Eyebrow>
+            <Text style={styles.title}>
+              {routine ? `Tus ${visibleExercises.length} ejercicios de hoy` : 'Elige qué vas a entrenar'}
+            </Text>
+            <Text style={styles.description}>
+              {routine
+                ? 'Elegí por dónde seguir. Si una máquina está ocupada, cambiá el ejercicio sin perder el día.'
+                : 'Sin rutina cargada: elegí del catálogo lo que quieras registrar.'}
             </Text>
           </View>
-        ) : null}
 
-        {dayOutOfRange ? (
-          <View style={[styles.notice, styles.noticeWarning]}>
-            <Text style={styles.noticeText}>
-              Tu rutina no tiene un día {dayIndex}, así que te mostramos todos sus ejercicios.
-            </Text>
-          </View>
-        ) : null}
+          {/* Avisos que antes eran silencios */}
+          {missingCount > 0 ? (
+            <View style={[styles.notice, styles.noticeWarning]}>
+              <Text style={styles.noticeText}>
+                {missingCount === 1
+                  ? 'Un ejercicio de tu rutina ya no está disponible y no aparece aquí.'
+                  : `${missingCount} ejercicios de tu rutina ya no están disponibles y no aparecen aquí.`}
+                {' '}Ábrela para reemplazarlos.
+              </Text>
+            </View>
+          ) : null}
 
-        {!routine ? (
-          <View style={styles.filterSection}>
-            <EquipmentFilter value={filter} onChange={setFilter} />
-          </View>
-        ) : null}
+          {dayOutOfRange ? (
+            <View style={[styles.notice, styles.noticeWarning]}>
+              <Text style={styles.noticeText}>
+                Tu rutina no tiene un día {dayIndex}, así que te mostramos todos sus ejercicios.
+              </Text>
+            </View>
+          ) : null}
 
-        {currentExercise ? (
-          <>
-            {/* Agrupada por músculo y plegada: un día son 6-8 ejercicios y verlos
-                todos sueltos era un muro. Solo se abre el grupo del ejercicio activo. */}
+          {!routine ? (
+            <View style={styles.filterSection}>
+              <EquipmentFilter value={filter} onChange={setFilter} />
+            </View>
+          ) : null}
+
+          {currentExercise ? (
             <View style={styles.groupList}>
               {groupedExercises.map(({ group, items }) => {
                 const groupKey = group ?? 'otros';
                 const hasCurrent = items.some((item) => item.id === currentExercise.id);
                 const isGroupOpen = openGroup === null ? hasCurrent : openGroup === groupKey;
+                const isFirstGroup = groupKey === firstGroupKey;
 
                 const groupSets = items.reduce((sum, item) => sum + (session.setsByExercise[item.id]?.length ?? 0), 0);
                 const groupDone = items.reduce(
@@ -410,40 +620,51 @@ export function ActiveWorkoutScreen() {
                       style={styles.groupHeader}
                     >
                       <View style={styles.groupHeaderText}>
+                        {isFirstGroup ? (
+                          <View style={styles.startHereRow}>
+                            <Text style={styles.startHereTag}>Empezá por acá</Text>
+                          </View>
+                        ) : null}
                         <Text style={styles.groupName}>{group ? MUSCLE_GROUP_LABELS[group] : 'Otros'}</Text>
                         <Text style={styles.groupMeta}>
                           {items.length === 1 ? '1 ejercicio' : `${items.length} ejercicios`} · {groupDone}/{groupSets} series
                         </Text>
+                        {isFirstGroup ? (
+                          <Text style={styles.startHereNote}>Los músculos grandes primero, mientras tenés más fuerza.</Text>
+                        ) : null}
                       </View>
                       <Text style={styles.chevron}>{isGroupOpen ? '−' : '+'}</Text>
                     </Pressable>
 
                     {isGroupOpen ? (
                       <View style={styles.groupBody}>
-                        {items.map((exercise) => {
-                          const selected = exercise.id === currentExercise.id;
+                        {items.map((exercise, index) => {
                           const sets = session.setsByExercise[exercise.id] ?? [];
                           const done = sets.length > 0 && sets.every((set) => set.completed);
                           const completedSets = sets.filter((set) => set.completed).length;
+                          const isRecommendedNext = exercise.id === nextExercise?.id;
 
                           return (
                             <Pressable
-                              key={exercise.id}
-                              accessibilityRole="radio"
-                              accessibilityLabel={`${exercise.name}, ${completedSets} de ${sets.length} series`}
-                              accessibilityState={{ selected }}
-                              onPress={() => setCurrentExerciseId(exercise.id)}
-                              style={({ pressed }) => [styles.variant, selected && styles.variantSelected, pressed && styles.pressed]}
+                              // Por posición, no por exercise.id: si la rutina tiene el mismo
+                              // ejercicio dos veces en este músculo (dato que el constructor ya
+                              // no deja crear, pero que una rutina vieja puede traer), dos
+                              // ejercicios con la misma key hacían que React tratara ambas filas
+                              // como una sola.
+                              key={`${groupKey}-${index}`}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${exercise.name}, ${completedSets} de ${sets.length} series${isRecommendedNext ? ', seguí acá' : ''}`}
+                              onPress={() => openExercise(exercise.id)}
+                              style={({ pressed }) => [styles.variant, isRecommendedNext && styles.variantRecommended, pressed && styles.pressed]}
                             >
                               <View style={styles.variantText}>
-                                <Text numberOfLines={2} style={[styles.variantName, selected && styles.variantNameSelected]}>
-                                  {exercise.name}
-                                </Text>
+                                <Text numberOfLines={2} style={styles.variantName}>{exercise.name}</Text>
                                 {exercise.region ? (
                                   <Text style={styles.variantRegion}>{REGION_LABELS[exercise.region]}</Text>
                                 ) : null}
+                                {isRecommendedNext ? <Text style={styles.variantRecommendedTag}>Seguí acá</Text> : null}
                               </View>
-                              <Text style={[styles.variantSets, selected && styles.variantNameSelected]}>
+                              <Text style={styles.variantSets}>
                                 {done ? '✓' : `${completedSets}/${sets.length || '·'}`}
                               </Text>
                             </Pressable>
@@ -455,152 +676,141 @@ export function ActiveWorkoutScreen() {
                 );
               })}
             </View>
-
-            <ExerciseMediaPreview exercise={currentExercise} />
-
-            <View style={styles.exerciseHeader}>
-              <Eyebrow>{`Ejercicio ${currentIndex + 1} de ${visibleExercises.length}`}</Eyebrow>
-              <Text style={styles.exerciseName}>{currentExercise.name}</Text>
-              <Text style={styles.exerciseMeta}>
-                {equipmentLabels[currentExercise.equipment]}
-                {currentExercise.group ? ` · ${MUSCLE_GROUP_LABELS[currentExercise.group]}` : ''}
-                {currentExercise.region ? ` · ${REGION_LABELS[currentExercise.region]}` : ''}
-                {currentExercise.isCompound ? ' · Compuesto' : ''}
-                {` · ${DIFFICULTY_LABELS[currentExercise.difficulty]}`}
+          ) : (
+            <View style={styles.stateArea}>
+              <Text style={styles.stateText}>
+                {skipped.length > 0
+                  ? 'Te saltaste todos los ejercicios. Vuelve a entrar para empezar de nuevo.'
+                  : 'No hay ejercicios con ese equipamiento. Prueba con otro filtro.'}
               </Text>
-
-              {/* Los agarres importan para el confort y para cuánto peso puedes mover,
-                  aunque ningún estudio haya comparado accesorios midiendo crecimiento. */}
-              {currentExercise.gripOptions.length > 0 ? (
-                <InfoNote label="¿Qué agarre uso?">
-                  {currentExercise.gripOptions.map((grip) => `${grip.name}: ${grip.note}`).join('\n\n')}
-                </InfoNote>
-              ) : null}
-
-              {currentExercise.evidenceNote ? (
-                <InfoNote
-                  label={`¿Por qué este ejercicio? · ${EVIDENCE_LABELS[currentExercise.evidenceLevel]}`}
-                  source={currentExercise.evidenceSource}
-                >
-                  {currentExercise.evidenceNote}
-                </InfoNote>
-              ) : null}
-
-              <View style={styles.exerciseActions}>
-                <Pressable accessibilityRole="button" onPress={() => setIsSwapOpen(true)} style={styles.textButton}>
-                  <Text style={styles.textButtonText}>
-                    {currentExercise.group ? `Cambiar por otro de ${MUSCLE_GROUP_LABELS[currentExercise.group].toLowerCase()}` : 'Cambiar ejercicio'}
-                  </Text>
+              {filter !== 'all' ? (
+                <Pressable accessibilityRole="button" onPress={() => setFilter('all')} style={styles.textButton}>
+                  <Text style={styles.textButtonText}>Ver todos</Text>
                 </Pressable>
-                {routine && !hasLoggedCurrent ? (
-                  <Pressable accessibilityRole="button" onPress={skipCurrent} style={styles.textButton}>
-                    <Text style={styles.mutedButtonText}>Saltar</Text>
+              ) : null}
+            </View>
+          )}
+
+          {session.finishError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{session.finishError}</Text> : null}
+          {session.isFinished ? (
+            <Text accessibilityLiveRegion="polite" style={session.saveState === 'queued' ? styles.pendingNotice : styles.success}>
+              {session.saveState === 'queued'
+                ? 'Entrenamiento guardado localmente. Se sincronizará cuando haya conexión.'
+                : 'Entrenamiento guardado. Tu racha ya se actualizó.'}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canFinish }}
+            disabled={!canFinish}
+            onPress={() => void session.finishWorkout()}
+            style={({ pressed }) => [styles.nextButton, !canFinish && styles.nextButtonDisabled, pressed && styles.pressed]}
+          >
+            {session.isFinishing ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.nextButtonText}>
+                {session.isFinished
+                  ? 'Entrenamiento finalizado'
+                  : `Finalizar entrenamiento · ${session.completedSetCount} ${session.completedSetCount === 1 ? 'serie' : 'series'}`}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Modo ejercicio: mismo trato — se oculta, no se desmonta, para no reiniciar
+            el aviso del [12] dentro de SetTracker si se va y se vuelve sin terminar. */}
+        <View style={isListMode ? styles.hidden : undefined}>
+          {currentExercise ? (
+            <>
+              <View style={styles.exerciseHeader}>
+                <Eyebrow>{`Ejercicio ${currentIndex + 1} de ${visibleExercises.length}`}</Eyebrow>
+                <Text style={styles.exerciseName}>{currentExercise.name}</Text>
+                <Text style={styles.exerciseMeta}>{equipmentLabels[currentExercise.equipment]}</Text>
+              </View>
+
+              {/* Pegada al registro, no con el resto de abajo: no es información extra, es
+                  la instrucción de con qué peso arrancar cuando no hay historial. */}
+              {progression ? (
+                <View style={styles.suggestion}>
+                  <Eyebrow color={colors.accent}>
+                    {progression.kind === 'add-weight' ? 'Toca subir peso' : progression.kind === 'add-reps' ? 'Una repetición más' : progression.kind === 'first-time' ? 'Punto de partida' : 'Consolida'}
+                  </Eyebrow>
+                  <Text style={styles.suggestionText}>{progression.message}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.logSection}>
+                {currentSets ? (
+                  <SetTracker
+                    sets={currentSets}
+                    previousPerformance={previousPerformance[currentExercise.id] ?? 'Sin registro previo'}
+                    disabled={session.isFinished}
+                    requiresWeight={currentExercise.equipment !== 'bodyweight'}
+                    targetReps={targetReps ?? null}
+                    onUpdateSet={(setNumber, field, value) => session.updateSet(currentExercise.id, setNumber, field, value)}
+                    onToggleComplete={(setNumber) => toggleSet(currentExercise.id, setNumber)}
+                    onToggleWarmup={() => session.toggleWarmup(currentExercise.id)}
+                  />
+                ) : (
+                  <ActivityIndicator accessibilityLabel="Preparando tus series" color={colors.accent} />
+                )}
+              </View>
+
+              {/* Todo lo que no hace falta leer antes de registrar: la técnica, por qué
+                  este ejercicio, y cambiarlo o saltarlo. Va después del registro, no antes. */}
+              <View style={styles.exerciseExtras}>
+                <Pressable accessibilityRole="button" onPress={() => setShowHowTo((value) => !value)} style={styles.textButton}>
+                  <Text style={styles.textButtonText}>{showHowTo ? 'Ocultar cómo se hace' : '¿Cómo se hace?'}</Text>
+                </Pressable>
+
+                {showHowTo ? <ExerciseMediaPreview exercise={currentExercise} /> : null}
+
+                {/* Los agarres importan para el confort y para cuánto peso puedes mover,
+                    aunque ningún estudio haya comparado accesorios midiendo crecimiento. */}
+                {currentExercise.gripOptions.length > 0 ? (
+                  <InfoNote label="¿Qué agarre uso?">
+                    {currentExercise.gripOptions.map((grip) => `${grip.name}: ${grip.note}`).join('\n\n')}
+                  </InfoNote>
+                ) : null}
+
+                {currentExercise.evidenceNote ? (
+                  <InfoNote
+                    label={`¿Por qué este ejercicio? · ${EVIDENCE_LABELS[currentExercise.evidenceLevel]}`}
+                    source={currentExercise.evidenceSource}
+                  >
+                    {currentExercise.evidenceNote}
+                  </InfoNote>
+                ) : null}
+
+                <View style={styles.exerciseActions}>
+                  <Pressable accessibilityRole="button" onPress={() => setIsSwapOpen(true)} style={styles.textButton}>
+                    <Text style={styles.textButtonText}>
+                      {currentExercise.group ? `Cambiar por otro de ${MUSCLE_GROUP_LABELS[currentExercise.group].toLowerCase()}` : 'Cambiar ejercicio'}
+                    </Text>
                   </Pressable>
+                  {routine && !hasLoggedCurrent ? (
+                    <Pressable accessibilityRole="button" onPress={skipCurrent} style={styles.textButton}>
+                      <Text style={styles.mutedButtonText}>Saltar</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+
+                {hasLoggedCurrent ? (
+                  <Text style={styles.swapWarning}>
+                    Ya registraste series aquí: si lo cambias, esas series se quedan guardadas igual.
+                  </Text>
                 ) : null}
               </View>
-
-              {hasLoggedCurrent ? (
-                <Text style={styles.swapWarning}>
-                  Ya registraste series aquí: si lo cambias, esas series se quedan guardadas igual.
-                </Text>
-              ) : null}
-            </View>
-
-            {progression ? (
-              <View style={styles.suggestion}>
-                <Eyebrow color={colors.accent}>
-                  {progression.kind === 'add-weight' ? 'Toca subir peso' : progression.kind === 'add-reps' ? 'Una repetición más' : progression.kind === 'first-time' ? 'Punto de partida' : 'Consolida'}
-                </Eyebrow>
-                <Text style={styles.suggestionText}>{progression.message}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.logSection}>
-              {currentSets ? (
-                <SetTracker
-                  sets={currentSets}
-                  previousPerformance={previousPerformance[currentExercise.id] ?? 'Sin registro previo'}
-                  disabled={session.isFinished}
-                  requiresWeight={currentExercise.equipment !== 'bodyweight'}
-                  targetReps={targetReps ?? null}
-                  onUpdateSet={(setNumber, field, value) => session.updateSet(currentExercise.id, setNumber, field, value)}
-                  onToggleComplete={(setNumber) => toggleSet(currentExercise.id, setNumber)}
-                  onToggleWarmup={() => session.toggleWarmup(currentExercise.id)}
-                />
-              ) : (
-                <ActivityIndicator accessibilityLabel="Preparando tus series" color={colors.accent} />
-              )}
-            </View>
-
-            {/* Al terminar un ejercicio, el descanso decía "Cambio de ejercicio" y no
-                cambiaba nada: el usuario tenía que descubrir solo que debía volver
-                arriba a tocar la siguiente tarjeta. */}
-            {isCurrentDone && nextExercise ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setCurrentExerciseId(nextExercise.id)}
-                style={({ pressed }) => [styles.nextExerciseButton, pressed && styles.pressed]}
-              >
-                <View style={styles.nextExerciseText}>
-                  <Eyebrow color={colors.accent}>Siguiente</Eyebrow>
-                  <Text style={styles.nextExerciseName} numberOfLines={2}>{nextExercise.name}</Text>
-                </View>
-                <Icon name="arrowRight" color={colors.accent} size={20} />
-              </Pressable>
-            ) : null}
-
-            {isCurrentDone && !nextExercise ? (
-              <Text accessibilityLiveRegion="polite" style={styles.allDone}>
-                Terminaste todos los ejercicios de hoy. Dale a finalizar para guardarlo.
-              </Text>
-            ) : null}
-          </>
-        ) : (
-          <View style={styles.stateArea}>
-            <Text style={styles.stateText}>
-              {skipped.length > 0
-                ? 'Te saltaste todos los ejercicios. Vuelve a entrar para empezar de nuevo.'
-                : 'No hay ejercicios con ese equipamiento. Prueba con otro filtro.'}
-            </Text>
-            {filter !== 'all' ? (
-              <Pressable accessibilityRole="button" onPress={() => setFilter('all')} style={styles.textButton}>
-                <Text style={styles.textButtonText}>Ver todos</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        )}
-
-        {session.finishError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{session.finishError}</Text> : null}
-        {session.isFinished ? (
-          <Text accessibilityLiveRegion="polite" style={session.saveState === 'queued' ? styles.pendingNotice : styles.success}>
-            {session.saveState === 'queued'
-              ? 'Entrenamiento guardado localmente. Se sincronizará cuando haya conexión.'
-              : 'Entrenamiento guardado. Tu racha y calendario ya se actualizaron.'}
-          </Text>
-        ) : null}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canFinish }}
-          disabled={!canFinish}
-          onPress={() => void session.finishWorkout()}
-          style={({ pressed }) => [styles.nextButton, !canFinish && styles.nextButtonDisabled, pressed && styles.pressed]}
-        >
-          {session.isFinishing ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.nextButtonText}>
-              {session.isFinished
-                ? 'Entrenamiento finalizado'
-                : `Finalizar entrenamiento · ${session.completedSetCount} ${session.completedSetCount === 1 ? 'serie' : 'series'}`}
-            </Text>
-          )}
-        </Pressable>
+            </>
+          ) : null}
+        </View>
       </ScrollView>
 
       {/* Fuera del ScrollView: dentro se renderizaba debajo de la tabla de series y
           quedaba fuera de pantalla justo cuando arrancaba, así que el usuario ni se
-          enteraba de que había un descanso corriendo. */}
+          enteraba de que había un descanso corriendo. Se ve en los dos modos. */}
       {rest.isRunning ? (
         <View style={styles.restDock} pointerEvents="box-none">
           <RestTimer remaining={rest.remaining} total={restTotal} label={restLabel} isFinished={rest.isFinished} onAdd={rest.add} onSkip={rest.stop} />
@@ -614,6 +824,8 @@ export function ActiveWorkoutScreen() {
           catalog={catalogExercises}
           selectedExerciseId={currentExercise.id}
           catalogError={catalogError}
+          disabledExerciseIds={disabledExerciseIds}
+          disabledReason="Ya está en tu rutina de hoy"
           onSelect={applySwap}
           onClose={() => setIsSwapOpen(false)}
         />
@@ -622,12 +834,20 @@ export function ActiveWorkoutScreen() {
   );
 }
 
+function formatReadOnlySet(set: { weightKg: number | null; completedReps: number | null }): string {
+  const reps = set.completedReps ?? '-';
+  if (!set.weightKg) return `${reps} reps`;
+  const weight = Number.isInteger(set.weightKg) ? String(set.weightKg) : set.weightKg.toFixed(1).replace('.', ',');
+  return `${weight} kg × ${reps}`;
+}
+
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: colors.background },
     content: { flexGrow: 1, paddingBottom: spacing.xl },
     /** Hueco para que la barra de descanso no tape el botón de finalizar. */
     contentWithTimer: { paddingBottom: 128 },
+    hidden: { display: 'none' },
     topbar: { minHeight: 48, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.lg },
     backButton: { minWidth: 48, minHeight: 44, justifyContent: 'center' },
     backText: { color: colors.accent, fontFamily: typography.body, fontSize: 16, fontWeight: '600' },
@@ -654,12 +874,17 @@ function createStyles(colors: ThemeColors) {
     variantText: { flex: 1, gap: 1, minWidth: 0 },
     variantRegion: { ...type.small, color: colors.textMuted, fontSize: 12 },
     variant: { alignItems: 'center', borderColor: colors.line, borderRadius: radii.sm, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
-    variantSelected: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-    variantName: { color: colors.textMuted, fontFamily: typography.body, fontSize: 14, fontWeight: '600', lineHeight: 19 },
-    variantNameSelected: { color: colors.accent },
+    variantRecommended: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+    variantName: { color: colors.text, fontFamily: typography.body, fontSize: 14, fontWeight: '600', lineHeight: 19 },
+    variantRecommendedTag: { ...type.small, color: colors.accent, fontSize: 11, fontWeight: '700', marginTop: 1 },
     variantSets: { color: colors.textMuted, fontFamily: typography.body, fontSize: 12, fontVariant: ['tabular-nums'] },
 
+    startHereRow: { flexDirection: 'row' },
+    startHereTag: { ...type.eyebrow, backgroundColor: colors.accentSoft, borderRadius: radii.pill, color: colors.accent, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 3 },
+    startHereNote: { ...type.small, color: colors.textMuted, marginTop: 2 },
+
     exerciseHeader: { gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
+    exerciseExtras: { gap: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.lg },
     exerciseName: { ...type.screenTitle, color: colors.text, fontSize: 25, lineHeight: 30 },
     exerciseMeta: { color: colors.textMuted, fontFamily: typography.body, fontSize: 14, lineHeight: 20 },
     exerciseActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
@@ -668,11 +893,9 @@ function createStyles(colors: ThemeColors) {
     suggestion: { backgroundColor: colors.accentSoft, borderRadius: radii.md, gap: spacing.xs, marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.md },
     suggestionText: { ...type.small, color: colors.text },
     logSection: { marginTop: spacing.lg, paddingHorizontal: spacing.lg },
-
-    nextExerciseButton: { alignItems: 'center', backgroundColor: colors.accentSoft, borderRadius: radii.md, flexDirection: 'row', gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.md, minHeight: 64, paddingHorizontal: spacing.md },
-    nextExerciseText: { flex: 1, gap: 2, minWidth: 0 },
-    nextExerciseName: { ...type.cardTitle, color: colors.text },
-    allDone: { ...type.body, color: colors.accent, marginHorizontal: spacing.lg, marginTop: spacing.md },
+    readOnlyExercise: { gap: spacing.xs, marginBottom: spacing.md, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.line },
+    readOnlyExerciseName: { ...type.body, color: colors.text, fontWeight: '600' },
+    readOnlyExerciseSets: { ...type.small, color: colors.textMuted },
 
     restDock: { bottom: 0, left: 0, position: 'absolute', right: 0 },
 

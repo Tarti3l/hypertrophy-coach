@@ -212,29 +212,36 @@ export function RoutineBuilderScreen() {
   const buildFromTemplate = useCallback(
     (source: SplitTemplate | null): BuilderDay[] => {
       if (!source) return [];
-      return source.days.map((day) => ({
-        dayIndex: day.dayIndex,
-        name: day.name,
-        dayKind: day.dayKind,
-        focusGroups: day.focusGroups,
-        pairingRationale: day.pairingRationale,
-        slots: day.slots.flatMap((slot) => {
+      return source.days.map((day) => {
+        // Por día, no global: dos slots del mismo músculo que necesiten sustituto
+        // no pueden caer los dos en `[0]` del grupo. Se banca porque `flatMap`
+        // recorre los slots en orden — para cuando el segundo se resuelve, el
+        // primero ya quedó anotado acá.
+        const usedInDay = new Set<string>();
+
+        const slots = day.slots.flatMap((slot) => {
           const proposed = catalogBySlug.get(slot.defaultExerciseSlug);
 
           /**
            * Si lo que propone la plantilla pide más técnica de la que el usuario
-           * declaró tener, se cambia por el mejor del mismo grupo que sí encaje.
-           * Sin esto, alguien que no ha pisado un gimnasio empezaba con peso muerto
-           * rumano con barra. Y no cuesta nada: las máquinas dan la misma hipertrofia
-           * que el peso libre (Haugen 2023).
+           * declaró tener, se cambia por el mejor del mismo grupo que sí encaje y
+           * que este día todavía no use. Sin esto, alguien que no ha pisado un
+           * gimnasio empezaba con peso muerto rumano con barra. Y no cuesta nada:
+           * las máquinas dan la misma hipertrofia que el peso libre (Haugen 2023).
+           *
+           * Si no queda ninguno libre del grupo, se prefiere el propuesto original
+           * —aunque pida más técnica— antes que repetir: dos filas idénticas es
+           * peor que un ejercicio algo más exigente.
            */
           const exercise = proposed && !suitsLevel(proposed.difficulty, knowledgeLevel)
-            ? exercisesForGroupByLevel(catalog.exercises, slot.muscleGroup, (item) => suitsLevel(item.difficulty, knowledgeLevel))[0] ?? proposed
+            ? exercisesForGroupByLevel(catalog.exercises, slot.muscleGroup, (item) => suitsLevel(item.difficulty, knowledgeLevel))
+                .find((candidate) => !usedInDay.has(candidate.id)) ?? proposed
             : proposed;
 
           // Si el catálogo no trae el ejercicio (migración a medias), saltamos el slot
           // en lugar de insertar un id vacío que reventaría al guardar.
           if (!exercise) return [];
+          usedInDay.add(exercise.id);
           return [{
             key: nextKey(),
             exerciseId: exercise.id,
@@ -245,8 +252,17 @@ export function RoutineBuilderScreen() {
             transitionSeconds: exercise.defaultTransitionSeconds ?? DEFAULT_TRANSITION_SECONDS,
             isOptional: slot.isOptional
           }];
-        })
-      }));
+        });
+
+        return {
+          dayIndex: day.dayIndex,
+          name: day.name,
+          dayKind: day.dayKind,
+          focusGroups: day.focusGroups,
+          pairingRationale: day.pairingRationale,
+          slots
+        };
+      });
     },
     [catalogBySlug, catalog.exercises, knowledgeLevel]
   );
@@ -418,11 +434,18 @@ export function RoutineBuilderScreen() {
     setAddingGroupTo(null);
 
     const wanted = groups.find((item) => item.slug === group)?.minExercises ?? 2;
-    const options = exercisesForGroupByLevel(catalog.exercises, group, (item) => suitsLevel(item.difficulty, knowledgeLevel));
-    const picked = (options.length > 0 ? options : exercisesForGroup(catalog.exercises, group)).slice(0, wanted);
 
     setDays((current) => current.map((day) => {
       if (day.dayIndex !== dayIndex || day.focusGroups.includes(group)) return day;
+
+      // Antes de cortar a `wanted`: los candidatos son distintos entre sí, pero eso
+      // no alcanza si alguno ya está en el día por otro camino (un swap manual, por
+      // ejemplo). Se excluyen antes de elegir, no después.
+      const usedInDay = new Set(day.slots.map((slot) => slot.exerciseId));
+      const options = exercisesForGroupByLevel(catalog.exercises, group, (item) => suitsLevel(item.difficulty, knowledgeLevel));
+      const pool = options.length > 0 ? options : exercisesForGroup(catalog.exercises, group);
+      const picked = pool.filter((exercise) => !usedInDay.has(exercise.id)).slice(0, wanted);
+
       const next = renameDay(day, day.dayKind, [...day.focusGroups, group]);
       return {
         ...next,
@@ -560,6 +583,26 @@ export function RoutineBuilderScreen() {
     const emptyDay = days.find((day) => day.slots.length === 0);
     if (emptyDay) { setError(`"${emptyDay.name}" se quedó sin ejercicios. Añade alguno o baja los días de la semana.`); return; }
 
+    // Última red antes de guardar: si algún camino que no vimos deja el mismo
+    // ejercicio dos veces en un día (por id o por nombre normalizado — el catálogo
+    // puede tener dos filas para el mismo ejercicio con ids distintos), no se guarda.
+    const duplicateDay = days.find((day) => {
+      const seenIds = new Set<string>();
+      const seenNames = new Set<string>();
+      return day.slots.some((slot) => {
+        const name = catalogById.get(slot.exerciseId)?.name;
+        const normalizedName = name ? normalizeExerciseName(name) : null;
+        const isDuplicate = seenIds.has(slot.exerciseId) || (normalizedName !== null && seenNames.has(normalizedName));
+        seenIds.add(slot.exerciseId);
+        if (normalizedName) seenNames.add(normalizedName);
+        return isDuplicate;
+      });
+    });
+    if (duplicateDay) {
+      setError(`"${duplicateDay.name}" tiene el mismo ejercicio dos veces. Cambiá uno de los dos antes de guardar.`);
+      return;
+    }
+
     // Se recorre agrupado para que el orden guardado sea el mismo que el que se ve.
     const exercises: RoutineExerciseInput[] = days.flatMap((day) =>
       groupSlotsByMuscle(day.slots).flatMap((entry) => entry.slots).map((slot) => ({
@@ -596,7 +639,7 @@ export function RoutineBuilderScreen() {
     } finally {
       if (isMountedRef.current) setIsSaving(false);
     }
-  }, [name, allSlots.length, days, daysPerWeek, template, cardioPlacement, cardioExerciseId, cardioMinutes, routineId, router]);
+  }, [name, allSlots.length, days, daysPerWeek, template, cardioPlacement, cardioExerciseId, cardioMinutes, routineId, router, catalogById]);
 
   if (!isReady) {
     return (

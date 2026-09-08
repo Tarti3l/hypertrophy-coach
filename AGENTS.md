@@ -64,6 +64,41 @@ de usar.** El usuario la abre entre series, con una mano, y no lee instrucciones
 9. **Un item por vez, y avisá cuál tomaste.** Si otro agente ya tiene un item
    `en curso` en `docs/estado.md`, no lo agarres en paralelo.
 
+10. **Colores, radios y tipografías salen de `tokens.ts`, nunca del componente.**
+    Ver "Sistema visual" más abajo. Un hex, un `borderRadius` numérico o un
+    `fontFamily` literal dentro de un componente es motivo de rechazo en
+    revisión, aunque el valor sea el correcto.
+
+
+## Sistema visual
+
+**La fuente de verdad es `docs/diseno.md`.** Leelo antes de tocar cualquier
+pantalla. Si la interfaz no coincide con ese documento, lo que está mal es la
+interfaz. El plan del rediseño vive en `docs/plan-diseno.md`.
+
+La dirección se llama **vino sobre negro**: fondo negro real, y el vino usado en
+tres lugares con función —el degradado del bloque en curso, el velo sobre las
+fotos, y el acento de lo activo— en vez de como fondo general. La fotografía es
+material: cada grupo muscular se reconoce sin leer.
+
+Lo que no se negocia sin hablarlo con el dueño:
+
+- **Todo sale de `apps/mobile/src/theme/tokens.ts`.** Ningún componente escribe
+  un color, un radio ni una familia tipográfica a mano.
+- **`accent` (#E8215E) y `accentFill` (#C41450) no son intercambiables.** El
+  primero es para texto e íconos sobre negro; el segundo para rellenar bloques
+  con texto blanco encima. Usar el primero como relleno es el error más fácil de
+  cometer acá.
+- **Radios generosos y ninguna sombra.** No mezcles esquinas duras y blandas.
+- **Un solo bloque de acento por pantalla**, el que marca qué está pasando ahora.
+- **Nada se ve roto por falta de un asset.** Sin foto o sin video hay un estado
+  dibujado a propósito; está en `docs/diseno.md`, sección 6.
+- **44 px de alto mínimo** en todo lo que se toca. La app se usa entre series,
+  con una mano.
+
+El rediseño visual está aprobado y en curso: la regla 1 («adaptación incremental,
+no rediseño») sigue aplicando a la arquitectura y al stack, no a la capa visual.
+
 ## Trabajo en paralelo
 
 Dos agentes editando el mismo árbol se pisan. Para trabajar en paralelo, cada uno

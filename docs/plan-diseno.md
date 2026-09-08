@@ -7,10 +7,14 @@
 | [D1] Reemplaza el sistema de tokens por «vino sobre negro» | en revisión | #15 | Falta la verificación en el teléfono del dueño del repo |
 | [D2] Empaqueta Archivo | pendiente | | Depende de que el [D1] mergee |
 | [D3] Barrido de radios y sombras escritos a mano | pendiente | | |
-| [D4] Pantalla de inicio con foto a sangre | pendiente | | |
-| [D5] Tarjetas de grupo muscular con foto | pendiente | | Depende también del item [19] mergeado |
-| [D6] Modo ejercicio | pendiente | | |
-| [D7] Descanso entre series | pendiente | | |
+| [D4] Pantalla de inicio con foto a sangre | en revisión | #16 | Quedaron fuera de alcance las filas de descanso y alimentación: no hay datos disponibles en esa pantalla |
+| [D5] Tarjetas de grupo muscular con foto | en revisión | #16 | |
+| [D6] Modo ejercicio | en revisión | #16 | Quedó fuera de alcance el estado sin video: `ExerciseMediaPreview` ya muestra los pasos de técnica reales, que es mejor que un estado dibujado |
+| [D7] Descanso entre series | en revisión | #16 | |
+
+Los cuatro (D4-D7) van en un solo PR, sobre `diseno-pantallas` (parte del
+item [19], no de `main`). Falta la verificación en el teléfono del dueño del
+repo.
 
 Cuando el PR #14 (`docs/plan.md`/`docs/estado.md`) mergee, se decide si se
 agrega acá un puntero hacia ese archivo o se fusionan los dos.

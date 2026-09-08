@@ -276,14 +276,51 @@ export function ActiveWorkoutScreen() {
       .catch(() => { /* la referencia es opcional: si falla, el tracker muestra "Sin registro previo". */ });
   }, [exerciseIds]);
 
+  /**
+   * Colapsa ejercicios repetidos dentro del día: mismo `exercise_id` o mismo nombre
+   * normalizado (el catálogo puede tener dos filas para el mismo ejercicio con ids
+   * distintos — ver `normalizeExerciseName`). El constructor ya lo impide al armar o
+   * editar una rutina, pero una rutina vieja o compartida puede traerlo igual, y
+   * arreglarlo ahí depende de que alguien entre a editar. Acá se resuelve solo, al
+   * leer, sin tocar la base.
+   *
+   * Se queda con la PRIMERA aparición. Excepción: si la aparición que se
+   * descartaría ya tiene alguna serie completada en esta sesión, no se colapsa —
+   * esconder trabajo ya registrado es peor que mostrar el repetido.
+   */
+  const { exercises: dedupedExercises, hadDuplicate } = useMemo(() => {
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const kept: TrainingExercise[] = [];
+    let collapsed = false;
+
+    for (const exercise of activeExercises) {
+      const normalizedName = normalizeExerciseName(exercise.name);
+      const isDuplicate = seenIds.has(exercise.id) || seenNames.has(normalizedName);
+
+      if (!isDuplicate) {
+        seenIds.add(exercise.id);
+        seenNames.add(normalizedName);
+        kept.push(exercise);
+        continue;
+      }
+
+      const hasRegisteredSets = Boolean(session.setsByExercise[exercise.id]?.some((set) => set.completed));
+      if (hasRegisteredSets) kept.push(exercise);
+      else collapsed = true;
+    }
+
+    return { exercises: kept, hadDuplicate: collapsed };
+  }, [activeExercises, session.setsByExercise]);
+
   // El filtro de equipamiento solo tiene sentido sin rutina: con rutina, lo que el
   // usuario necesita cuando la máquina está ocupada es un cambio de ejercicio, no
   // esconder los suyos. Para eso está la hoja de sustitución.
   const visibleExercises = useMemo(
     () => (routine || filter === 'all')
-      ? activeExercises
-      : activeExercises.filter((exercise) => exercise.equipmentGroup === filter),
-    [routine, activeExercises, filter]
+      ? dedupedExercises
+      : dedupedExercises.filter((exercise) => exercise.equipmentGroup === filter),
+    [routine, dedupedExercises, filter]
   );
 
   // Mantiene una selección válida cuando el catálogo llega o cambia el filtro.
@@ -597,6 +634,14 @@ export function ActiveWorkoutScreen() {
                   ? 'Un ejercicio de tu rutina ya no está disponible y no aparece aquí.'
                   : `${missingCount} ejercicios de tu rutina ya no están disponibles y no aparecen aquí.`}
                 {' '}Ábrela para reemplazarlos.
+              </Text>
+            </View>
+          ) : null}
+
+          {hadDuplicate ? (
+            <View style={[styles.notice, styles.noticeWarning]}>
+              <Text style={styles.noticeText}>
+                Tu rutina tenía un ejercicio repetido y lo mostramos una sola vez. Ábrela para reemplazarlo.
               </Text>
             </View>
           ) : null}

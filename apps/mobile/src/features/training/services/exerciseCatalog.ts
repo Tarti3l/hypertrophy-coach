@@ -207,6 +207,50 @@ export function exercisesForGroupByLevel(
   });
 }
 
+/**
+ * Elige un ejercicio para un slot de un músculo, sin repetir el día y cubriendo
+ * la mayor cantidad de regiones distintas posible. Lo usan `buildFromTemplate` y
+ * `addGroupToDay`: es la misma decisión, una vez por slot, en los dos lugares
+ * donde el constructor recomienda ejercicios sin que el usuario elija a mano.
+ *
+ * Orden real de las tres reglas (decisión del dueño, tras el hallazgo de
+ * "Rutina gou" — el constructor repetía ejercicios en rutinas de nivel bajo):
+ *  1. Nunca repetir el mismo ejercicio en el día. Regla dura, sin excepción:
+ *     mientras quede alguno sin usar en el grupo, no se repite.
+ *  2. Cubrir la mayor cantidad de regiones distintas del músculo.
+ *  3. Respetar el nivel declarado.
+ * Cuando 2 y 3 chocan —no hay ningún ejercicio de la región que falta que
+ * encaje con el nivel— gana el nivel: mejor repetir región que proponerle a un
+ * principiante algo que no sabe ejecutar.
+ */
+export function pickExerciseForSlot(
+  proposed: TrainingExercise | undefined,
+  group: MuscleGroupSlug,
+  catalog: TrainingExercise[],
+  suits: (exercise: TrainingExercise) => boolean,
+  usedIds: ReadonlySet<string>,
+  usedRegions: ReadonlySet<MuscleRegion>
+): TrainingExercise | undefined {
+  const isNewRegion = (exercise: TrainingExercise) => !exercise.region || !usedRegions.has(exercise.region);
+
+  // El propuesto por la plantilla es la mejor opción posible cuando de verdad lo
+  // es: no repetido, encaja con el nivel, y suma una región que este día todavía
+  // no tiene en este músculo. Preservar la elección curada del template en ese
+  // caso, en vez de siempre recalcular desde cero.
+  if (proposed && !usedIds.has(proposed.id) && suits(proposed) && isNewRegion(proposed)) return proposed;
+
+  const candidates = exercisesForGroup(catalog, group).filter((exercise) => !usedIds.has(exercise.id));
+  if (candidates.length === 0) return proposed; // el grupo entero ya se usó: repetir es inevitable
+
+  return [...candidates].sort((a, b) => {
+    const levelDelta = Number(suits(b)) - Number(suits(a));
+    if (levelDelta !== 0) return levelDelta;
+    const regionDelta = Number(isNewRegion(b)) - Number(isNewRegion(a));
+    if (regionDelta !== 0) return regionDelta;
+    return a.groupRank - b.groupRank;
+  })[0];
+}
+
 function toTrainingExercise(row: ExerciseRow): TrainingExercise {
   const instructions = Array.isArray(row.instructions) ? (row.instructions as unknown[]).filter(isNonEmptyString) : [];
   const primary = row.primary_muscles ?? [];

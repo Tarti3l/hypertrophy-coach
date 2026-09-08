@@ -15,7 +15,7 @@ import { ExerciseSwapSheet } from '../components/ExerciseSwapSheet';
 import { Stepper } from '../components/Stepper';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useSplitTemplates } from '../hooks/useSplitTemplates';
-import { equipmentLabels, exercisesForGroup, exercisesForGroupByLevel, normalizeExerciseName } from '../services/exerciseCatalog';
+import { equipmentLabels, exercisesForGroup, normalizeExerciseName, pickExerciseForSlot } from '../services/exerciseCatalog';
 import { suitsLevel, useKnowledgeLevel } from '../hooks/useKnowledgeLevel';
 import { templateForDays } from '../services/splitTemplates';
 import { computeWeeklyVolume, formatSets, VolumeEntry } from '../services/volume';
@@ -40,7 +40,7 @@ import {
   REST_STEP_SECONDS,
   RoutineExerciseInput
 } from '../types/routine';
-import { DIFFICULTY_LABELS, MUSCLE_GROUP_LABELS, MuscleGroupSlug, TrainingExercise } from '../types/training';
+import { DIFFICULTY_LABELS, MUSCLE_GROUP_LABELS, MuscleGroupSlug, MuscleRegion, REGION_LABELS, TrainingExercise } from '../types/training';
 import { createRoutine, getRoutine, updateRoutine } from '../services/routineRepository';
 
 type BuilderSlot = {
@@ -213,35 +213,32 @@ export function RoutineBuilderScreen() {
     (source: SplitTemplate | null): BuilderDay[] => {
       if (!source) return [];
       return source.days.map((day) => {
-        // Por día, no global: dos slots del mismo músculo que necesiten sustituto
-        // no pueden caer los dos en `[0]` del grupo. Se banca porque `flatMap`
-        // recorre los slots en orden — para cuando el segundo se resuelve, el
-        // primero ya quedó anotado acá.
+        // Por día, no global: `pickExerciseForSlot` decide un slot a la vez, así que
+        // lo elegido para uno tiene que quedar anotado antes de resolver el
+        // siguiente. `usedRegionsByGroup` es por músculo — cubrir regiones de pecho
+        // no dice nada sobre las de espalda.
         const usedInDay = new Set<string>();
+        const usedRegionsByGroup = new Map<MuscleGroupSlug, Set<MuscleRegion>>();
 
         const slots = day.slots.flatMap((slot) => {
           const proposed = catalogBySlug.get(slot.defaultExerciseSlug);
+          const usedRegions = usedRegionsByGroup.get(slot.muscleGroup) ?? new Set<MuscleRegion>();
 
-          /**
-           * Si lo que propone la plantilla pide más técnica de la que el usuario
-           * declaró tener, se cambia por el mejor del mismo grupo que sí encaje y
-           * que este día todavía no use. Sin esto, alguien que no ha pisado un
-           * gimnasio empezaba con peso muerto rumano con barra. Y no cuesta nada:
-           * las máquinas dan la misma hipertrofia que el peso libre (Haugen 2023).
-           *
-           * Si no queda ninguno libre del grupo, se prefiere el propuesto original
-           * —aunque pida más técnica— antes que repetir: dos filas idénticas es
-           * peor que un ejercicio algo más exigente.
-           */
-          const exercise = proposed && !suitsLevel(proposed.difficulty, knowledgeLevel)
-            ? exercisesForGroupByLevel(catalog.exercises, slot.muscleGroup, (item) => suitsLevel(item.difficulty, knowledgeLevel))
-                .find((candidate) => !usedInDay.has(candidate.id)) ?? proposed
-            : proposed;
+          const exercise = pickExerciseForSlot(
+            proposed,
+            slot.muscleGroup,
+            catalog.exercises,
+            (item) => suitsLevel(item.difficulty, knowledgeLevel),
+            usedInDay,
+            usedRegions
+          );
 
           // Si el catálogo no trae el ejercicio (migración a medias), saltamos el slot
           // en lugar de insertar un id vacío que reventaría al guardar.
           if (!exercise) return [];
           usedInDay.add(exercise.id);
+          if (exercise.region) usedRegions.add(exercise.region);
+          usedRegionsByGroup.set(slot.muscleGroup, usedRegions);
           return [{
             key: nextKey(),
             exerciseId: exercise.id,
@@ -438,13 +435,32 @@ export function RoutineBuilderScreen() {
     setDays((current) => current.map((day) => {
       if (day.dayIndex !== dayIndex || day.focusGroups.includes(group)) return day;
 
-      // Antes de cortar a `wanted`: los candidatos son distintos entre sí, pero eso
-      // no alcanza si alguno ya está en el día por otro camino (un swap manual, por
-      // ejemplo). Se excluyen antes de elegir, no después.
+      // Se pide de a uno, no se corta una lista precalculada: cada elección tiene
+      // que enterarse de la anterior (mismo criterio que buildFromTemplate) para no
+      // repetir ejercicio ni región dentro de este grupo.
       const usedInDay = new Set(day.slots.map((slot) => slot.exerciseId));
-      const options = exercisesForGroupByLevel(catalog.exercises, group, (item) => suitsLevel(item.difficulty, knowledgeLevel));
-      const pool = options.length > 0 ? options : exercisesForGroup(catalog.exercises, group);
-      const picked = pool.filter((exercise) => !usedInDay.has(exercise.id)).slice(0, wanted);
+      const usedRegions = new Set(
+        day.slots
+          .filter((slot) => slot.muscleGroup === group)
+          .map((slot) => catalogById.get(slot.exerciseId)?.region)
+          .filter((region): region is MuscleRegion => Boolean(region))
+      );
+
+      const picked: TrainingExercise[] = [];
+      for (let i = 0; i < wanted; i += 1) {
+        const exercise = pickExerciseForSlot(
+          undefined,
+          group,
+          catalog.exercises,
+          (item) => suitsLevel(item.difficulty, knowledgeLevel),
+          usedInDay,
+          usedRegions
+        );
+        if (!exercise) break; // el grupo entero ya está en el día: no hay más para ofrecer
+        picked.push(exercise);
+        usedInDay.add(exercise.id);
+        if (exercise.region) usedRegions.add(exercise.region);
+      }
 
       const next = renameDay(day, day.dayKind, [...day.focusGroups, group]);
       return {
@@ -461,7 +477,7 @@ export function RoutineBuilderScreen() {
         }))]
       };
     }));
-  }, [groups, catalog.exercises, knowledgeLevel, renameDay]);
+  }, [groups, catalog.exercises, knowledgeLevel, renameDay, catalogById]);
 
   const restoreRecommendedWeek = useCallback(() => {
     if (!template) return;
@@ -998,7 +1014,11 @@ export function RoutineBuilderScreen() {
                                       <Text style={styles.slotName}>{exercise?.name ?? 'Ejercicio'}</Text>
                                       <Text style={styles.slotMeta}>
                                         {exercise ? equipmentLabels[exercise.equipment] : ''}
-                                        {exercise ? ` · ${DIFFICULTY_LABELS[exercise.difficulty]}` : ''}
+                                        {/* La región distingue dos ejercicios del mismo músculo de un vistazo
+                                            ("Cabeza larga" vs "Cabeza lateral"); la dificultad no — casi todo
+                                            el catálogo es "Fácil de ejecutar". Sin región (no debería pasar
+                                            fuera de cardio, que no usa esta tarjeta), cae a la dificultad. */}
+                                        {exercise ? ` · ${exercise.region ? REGION_LABELS[exercise.region] : DIFFICULTY_LABELS[exercise.difficulty]}` : ''}
                                         {slot.isOptional ? ' · puedes quitarlo' : ''}
                                       </Text>
                                     </View>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useGoBack } from '@/hooks/useGoBack';
@@ -8,7 +9,8 @@ import { Eyebrow } from '@/components/ui/Eyebrow';
 import { InfoNote } from '@/components/ui/InfoNote';
 import { Icon } from '@/components/ui/Icon';
 import { describeSupabaseError } from '@/lib/supabaseErrors';
-import { palette, radii, spacing, ThemeColors, type, typography } from '@/theme/tokens';
+import { images } from '@/theme/images';
+import { palette, radii, scrim, spacing, ThemeColors, type, typography } from '@/theme/tokens';
 import { SetTracker } from '@/features/progress/components/SetTracker';
 import { formatElapsedTime, useWorkoutSession } from '@/features/progress/hooks/useWorkoutSession';
 import {
@@ -610,31 +612,67 @@ export function ActiveWorkoutScreen() {
                   0
                 );
 
+                // La imagen se resuelve por slug. Si el grupo no la tiene, o es "Otros",
+                // cae al estado sin imagen en vez de romperse: docs/diseno.md, regla 3.
+                const groupPhoto = group ? images.musculo[group] : undefined;
+                const groupThumb = group ? images.musculoThumb[group] : undefined;
+                const groupLabel = group ? MUSCLE_GROUP_LABELS[group] : 'Otros';
+                const groupCount = `${items.length === 1 ? '1 ejercicio' : `${items.length} ejercicios`} · ${groupDone}/${groupSets} series`;
+
                 return (
                   <View key={groupKey} style={styles.groupSection}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ expanded: isGroupOpen }}
-                      accessibilityLabel={`${group ? MUSCLE_GROUP_LABELS[group] : 'Otros'}, ${groupDone} de ${groupSets} series`}
-                      onPress={() => setOpenGroup(isGroupOpen ? '' : groupKey)}
-                      style={styles.groupHeader}
-                    >
-                      <View style={styles.groupHeaderText}>
-                        {isFirstGroup ? (
-                          <View style={styles.startHereRow}>
-                            <Text style={styles.startHereTag}>Empezá por acá</Text>
+                    {isFirstGroup ? (
+                      /* El grupo recomendado es el unico bloque grande de la lista: se
+                         reconoce por la foto, sin leer. */
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: isGroupOpen }}
+                        accessibilityLabel={`${groupLabel}, ${groupDone} de ${groupSets} series`}
+                        onPress={() => setOpenGroup(isGroupOpen ? '' : groupKey)}
+                        style={styles.groupHero}
+                      >
+                        {groupPhoto ? (
+                          <>
+                            <Image source={groupPhoto} style={styles.groupHeroImage} resizeMode="cover" />
+                            <LinearGradient
+                              colors={scrim.card.colors}
+                              locations={scrim.card.locations}
+                              style={StyleSheet.absoluteFill}
+                              pointerEvents="none"
+                            />
+                          </>
+                        ) : (
+                          <View style={[StyleSheet.absoluteFill, styles.sinImagen]}>
+                            <Text style={styles.sinImagenText}>Sin foto</Text>
                           </View>
-                        ) : null}
-                        <Text style={styles.groupName}>{group ? MUSCLE_GROUP_LABELS[group] : 'Otros'}</Text>
-                        <Text style={styles.groupMeta}>
-                          {items.length === 1 ? '1 ejercicio' : `${items.length} ejercicios`} · {groupDone}/{groupSets} series
-                        </Text>
-                        {isFirstGroup ? (
-                          <Text style={styles.startHereNote}>Los músculos grandes primero, mientras tenés más fuerza.</Text>
-                        ) : null}
-                      </View>
-                      <Text style={styles.chevron}>{isGroupOpen ? '−' : '+'}</Text>
-                    </Pressable>
+                        )}
+                        <View style={styles.groupHeroText}>
+                          <Text style={styles.startHereTag}>Empezá por acá</Text>
+                          <Text style={[styles.groupHeroName, !groupPhoto && styles.groupNameSinFoto]}>{groupLabel}</Text>
+                          <Text style={styles.groupHeroMeta}>{groupCount}</Text>
+                          <Text style={styles.groupHeroNote}>Los músculos grandes primero, mientras tenés más fuerza.</Text>
+                        </View>
+                      </Pressable>
+                    ) : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: isGroupOpen }}
+                        accessibilityLabel={`${groupLabel}, ${groupDone} de ${groupSets} series`}
+                        onPress={() => setOpenGroup(isGroupOpen ? '' : groupKey)}
+                        style={styles.groupHeader}
+                      >
+                        {groupThumb ? (
+                          <Image source={groupThumb} style={styles.groupThumb} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.groupThumb, styles.sinImagen]} />
+                        )}
+                        <View style={styles.groupHeaderText}>
+                          <Text style={[styles.groupName, !groupThumb && styles.groupNameSinFoto]}>{groupLabel}</Text>
+                          <Text style={styles.groupMeta}>{groupCount}</Text>
+                        </View>
+                        <Text style={styles.chevron}>{isGroupOpen ? '−' : '+'}</Text>
+                      </Pressable>
+                    )}
 
                     {isGroupOpen ? (
                       <View style={styles.groupBody}>
@@ -708,7 +746,7 @@ export function ActiveWorkoutScreen() {
             style={({ pressed }) => [styles.nextButton, !canFinish && styles.nextButtonDisabled, pressed && styles.pressed]}
           >
             {session.isFinishing ? (
-              <ActivityIndicator color={colors.surface} />
+              <ActivityIndicator color={colors.onAccent} />
             ) : (
               <Text style={styles.nextButtonText}>
                 {session.isFinished
@@ -727,7 +765,12 @@ export function ActiveWorkoutScreen() {
               <View style={styles.exerciseHeader}>
                 <Eyebrow>{`Ejercicio ${currentIndex + 1} de ${visibleExercises.length}`}</Eyebrow>
                 <Text style={styles.exerciseName}>{currentExercise.name}</Text>
-                <Text style={styles.exerciseMeta}>{equipmentLabels[currentExercise.equipment]}</Text>
+                {/* Datos, no prosa: se leen de un vistazo entre serie y serie. */}
+                <View style={styles.metaPills}>
+                  <Text style={styles.metaPill}>{equipmentLabels[currentExercise.equipment]}</Text>
+                  {targetReps ? <Text style={styles.metaPill}>{targetReps} reps</Text> : null}
+                  <Text style={styles.metaPill}>{previousPerformance[currentExercise.id] ?? 'Sin registro previo'}</Text>
+                </View>
               </View>
 
               {/* Pegada al registro, no con el resto de abajo: no es información extra, es
@@ -864,8 +907,18 @@ function createStyles(colors: ThemeColors) {
     filterSection: { marginTop: spacing.lg, paddingLeft: spacing.lg },
 
     groupList: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.lg },
-    groupSection: { borderColor: colors.line, borderRadius: radii.md, borderWidth: 1, overflow: 'hidden' },
-    groupHeader: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between', minHeight: 56, paddingHorizontal: spacing.md },
+    groupSection: { borderColor: colors.line, borderRadius: radii.lg, borderWidth: 1, overflow: 'hidden' },
+    groupHeader: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between', minHeight: 76, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+    groupThumb: { borderRadius: radii.sm, height: 52, width: 52 },
+    groupHero: { height: 184, justifyContent: 'flex-end' },
+    groupHeroImage: { height: '100%', position: 'absolute', width: '100%' },
+    groupHeroText: { gap: 2, padding: spacing.md },
+    groupHeroName: { ...type.sectionTitle, color: colors.onAccent },
+    groupHeroMeta: { ...type.small, color: colors.onAccent, opacity: 0.9 },
+    groupHeroNote: { ...type.small, color: colors.onAccent, fontSize: 13, marginTop: 2, opacity: 0.82 },
+    sinImagen: { alignItems: 'center', backgroundColor: colors.surface, justifyContent: 'center' },
+    sinImagenText: { ...type.label, color: colors.empty },
+    groupNameSinFoto: { color: colors.textLabel },
     groupHeaderText: { flexShrink: 1, gap: 2, minWidth: 0 },
     groupName: { ...type.cardTitle, color: colors.text },
     chevron: { color: colors.accent, fontFamily: typography.display, fontSize: 22, fontWeight: '800' },
@@ -873,7 +926,7 @@ function createStyles(colors: ThemeColors) {
     groupBody: { backgroundColor: colors.surface, gap: spacing.sm, padding: spacing.md },
     variantText: { flex: 1, gap: 1, minWidth: 0 },
     variantRegion: { ...type.small, color: colors.textMuted, fontSize: 12 },
-    variant: { alignItems: 'center', borderColor: colors.line, borderRadius: radii.sm, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+    variant: { alignItems: 'center', borderColor: colors.line, borderRadius: radii.md, borderWidth: 1, flexDirection: 'row', gap: spacing.sm, minHeight: 60, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
     variantRecommended: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
     variantName: { color: colors.text, fontFamily: typography.body, fontSize: 14, fontWeight: '600', lineHeight: 19 },
     variantRecommendedTag: { ...type.small, color: colors.accent, fontSize: 11, fontWeight: '700', marginTop: 1 },
@@ -886,7 +939,8 @@ function createStyles(colors: ThemeColors) {
     exerciseHeader: { gap: spacing.xs, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
     exerciseExtras: { gap: spacing.xs, marginTop: spacing.lg, paddingHorizontal: spacing.lg },
     exerciseName: { ...type.screenTitle, color: colors.text, fontSize: 25, lineHeight: 30 },
-    exerciseMeta: { color: colors.textMuted, fontFamily: typography.body, fontSize: 14, lineHeight: 20 },
+    metaPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
+    metaPill: { ...type.label, backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radii.pill, borderWidth: 1, color: colors.textLabel, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 7 },
     exerciseActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
     swapWarning: { ...type.small, color: colors.textMuted },
 
@@ -899,9 +953,9 @@ function createStyles(colors: ThemeColors) {
 
     restDock: { bottom: 0, left: 0, position: 'absolute', right: 0 },
 
-    nextButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: radii.md, backgroundColor: colors.accent, marginHorizontal: spacing.lg, marginTop: spacing.xl },
+    nextButton: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: radii.pill, backgroundColor: colors.accentFill, marginHorizontal: spacing.lg, marginTop: spacing.xl },
     nextButtonDisabled: { backgroundColor: colors.line },
-    nextButtonText: { color: colors.surface, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },
+    nextButtonText: { ...type.pill, color: colors.onAccent },
     error: { color: colors.danger, fontFamily: typography.body, fontSize: 13, lineHeight: 18, marginHorizontal: spacing.lg, marginTop: spacing.md },
     pendingNotice: { color: colors.warning, fontFamily: typography.body, fontSize: 14, lineHeight: 21, marginHorizontal: spacing.lg, marginTop: spacing.md },
     success: { color: colors.accent, fontFamily: typography.body, fontSize: 14, lineHeight: 21, marginHorizontal: spacing.lg, marginTop: spacing.md },

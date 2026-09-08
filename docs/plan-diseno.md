@@ -18,6 +18,32 @@ verificación en el teléfono del dueño del repo.
 Cuando el PR #14 (`docs/plan.md`/`docs/estado.md`) mergee, se decide si se
 agrega acá un puntero hacia ese archivo o se fusionan los dos.
 
+### Ajustes fuera de la cadena D1-D7
+
+Dos correcciones sobre `main` después de mergear el [D4]-[D7] (PR #17), ninguna
+parte de un item D1-D7:
+
+- **Ejercicio duplicado marcado dos veces como "Seguí acá".** Confirmado en
+  "Rutina gou": el mismo ejercicio repetido dentro de Pecho hacía que
+  `nextExercise` (comparado solo por `exercise.id`) marcara las dos filas a la
+  vez. Corregido comparando por posición en `visibleExercises`, no por id —
+  mismo criterio que ya se usó para las keys de React al partir el modo lista.
+  Pendiente, sin resolver: confirmar si hay otras rutinas con el mismo
+  duplicado. No se puede consultar por RLS más allá de la propia cuenta del
+  dueño del repo (misma limitación que la pregunta abierta de `docs/estado.md`
+  sobre cuántos usuarios hay en la base).
+- **Pestaña "Entrenamiento" oculta de la barra inferior** (`href: null` en
+  `(tabs)/_layout.tsx`). La ruta y la pantalla siguen vivas; se llega solo
+  desde "Empezar entrenamiento" en Inicio. Antes de ocultarla se confirmó que
+  dos pantallas quedan sin ningún enlace en la UI a partir de este cambio —
+  `TrainingTheoryScreen` (el índice de la pestaña) y `WarmupScreen`
+  (`/training/warmup`), un flujo genérico previo al onboarding y constructor
+  de rutinas actuales, que ninguna otra pantalla enlaza. Decisión explícita
+  del dueño del repo: no tocarlas todavía, se decide después. Sí se corrigió
+  el destino de "Volver sin historial" de `RoutinesScreen` y
+  `ActiveWorkoutScreen`, que apuntaba a la pestaña ahora oculta: pasa a
+  Inicio (`/(tabs)`).
+
 ---
 
 Este plan cubre **solo** el rediseño. El resto de `docs/plan.md` —la cadena

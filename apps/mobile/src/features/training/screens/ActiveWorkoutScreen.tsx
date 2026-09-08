@@ -37,7 +37,9 @@ type ViewMode = 'lista' | 'ejercicio';
 
 export function ActiveWorkoutScreen() {
   const router = useRouter();
-  const goBack = useGoBack('/(tabs)/training');
+  // La pestaña de Entrenamiento está oculta de la barra: caer ahí sin historial
+  // dejaría al socio en una pantalla sin ningún enlace visible para salir.
+  const goBack = useGoBack('/(tabs)');
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -300,14 +302,17 @@ export function ActiveWorkoutScreen() {
    */
   const groupedExercises = useMemo(() => {
     const order: (MuscleGroupSlug | null)[] = [];
-    const byGroup = new Map<string, { group: MuscleGroupSlug | null; items: TrainingExercise[] }>();
+    // `position` es el índice en `visibleExercises`, no en el grupo: es lo que permite
+    // distinguir dos filas del mismo ejercicio (mismo id) al comparar contra
+    // `nextExercise.position` más abajo, en vez de comparar por id y marcar las dos.
+    const byGroup = new Map<string, { group: MuscleGroupSlug | null; items: { exercise: TrainingExercise; position: number }[] }>();
 
-    for (const exercise of visibleExercises) {
+    visibleExercises.forEach((exercise, position) => {
       const key = exercise.group ?? 'otros';
       const entry = byGroup.get(key);
-      if (entry) entry.items.push(exercise);
-      else { byGroup.set(key, { group: exercise.group, items: [exercise] }); order.push(exercise.group); }
-    }
+      if (entry) entry.items.push({ exercise, position });
+      else { byGroup.set(key, { group: exercise.group, items: [{ exercise, position }] }); order.push(exercise.group); }
+    });
 
     const sizeRank = (group: MuscleGroupSlug | null) => (group && smallGroups.has(group) ? 1 : 0);
     const sortedOrder = order
@@ -339,14 +344,26 @@ export function ActiveWorkoutScreen() {
     }
   }, [session.isFinished, router]);
 
-  /** El siguiente ejercicio sin terminar, empezando por el que va después del actual. */
+  /**
+   * El siguiente ejercicio sin terminar, empezando por el que va después del actual.
+   *
+   * Guarda también `position` (el índice en `visibleExercises`), no solo el ejercicio:
+   * si una rutina tiene el mismo ejercicio dos veces (dato que el constructor ya no
+   * deja crear, pero que una rutina vieja puede traer), comparar solo por id marcaba
+   * "Seguí acá" en las dos filas a la vez. La posición distingue cuál de las dos es.
+   */
   const nextExercise = useMemo(() => {
     if (visibleExercises.length === 0 || currentIndex < 0) return null;
-    const ordered = [...visibleExercises.slice(currentIndex + 1), ...visibleExercises.slice(0, currentIndex)];
-    return ordered.find((exercise) => {
+    const rotatedPositions = [
+      ...Array.from({ length: visibleExercises.length - currentIndex - 1 }, (_, i) => currentIndex + 1 + i),
+      ...Array.from({ length: currentIndex }, (_, i) => i)
+    ];
+    const position = rotatedPositions.find((index) => {
+      const exercise = visibleExercises[index];
       const sets = session.setsByExercise[exercise.id];
       return !sets || sets.length === 0 || sets.some((set) => !set.completed);
-    }) ?? null;
+    });
+    return position === undefined ? null : { exercise: visibleExercises[position], position };
   }, [visibleExercises, currentIndex, session.setsByExercise]);
 
   /**
@@ -368,7 +385,7 @@ export function ActiveWorkoutScreen() {
   useEffect(() => {
     if (viewMode === 'ejercicio' && isCurrentDone && !wasCurrentDoneRef.current) {
       setViewMode('lista');
-      setCurrentExerciseId(nextExercise?.id ?? null);
+      setCurrentExerciseId(nextExercise?.exercise.id ?? null);
     }
     wasCurrentDoneRef.current = isCurrentDone;
   }, [isCurrentDone, viewMode, nextExercise]);
@@ -421,7 +438,7 @@ export function ActiveWorkoutScreen() {
     if (!currentExercise) return;
     setSkipped((current) => current.includes(currentExercise.id) ? current : [...current, currentExercise.id]);
     if (nextExercise) {
-      setCurrentExerciseId(nextExercise.id);
+      setCurrentExerciseId(nextExercise.exercise.id);
       setShowHowTo(false);
     } else {
       setViewMode('lista');
@@ -602,13 +619,13 @@ export function ActiveWorkoutScreen() {
             <View style={styles.groupList}>
               {groupedExercises.map(({ group, items }) => {
                 const groupKey = group ?? 'otros';
-                const hasCurrent = items.some((item) => item.id === currentExercise.id);
+                const hasCurrent = items.some((item) => item.exercise.id === currentExercise.id);
                 const isGroupOpen = openGroup === null ? hasCurrent : openGroup === groupKey;
                 const isFirstGroup = groupKey === firstGroupKey;
 
-                const groupSets = items.reduce((sum, item) => sum + (session.setsByExercise[item.id]?.length ?? 0), 0);
+                const groupSets = items.reduce((sum, item) => sum + (session.setsByExercise[item.exercise.id]?.length ?? 0), 0);
                 const groupDone = items.reduce(
-                  (sum, item) => sum + (session.setsByExercise[item.id]?.filter((set) => set.completed).length ?? 0),
+                  (sum, item) => sum + (session.setsByExercise[item.exercise.id]?.filter((set) => set.completed).length ?? 0),
                   0
                 );
 
@@ -676,11 +693,13 @@ export function ActiveWorkoutScreen() {
 
                     {isGroupOpen ? (
                       <View style={styles.groupBody}>
-                        {items.map((exercise, index) => {
+                        {items.map(({ exercise, position }, index) => {
                           const sets = session.setsByExercise[exercise.id] ?? [];
                           const done = sets.length > 0 && sets.every((set) => set.completed);
                           const completedSets = sets.filter((set) => set.completed).length;
-                          const isRecommendedNext = exercise.id === nextExercise?.id;
+                          // Por posición, no por exercise.id: dos filas del mismo ejercicio
+                          // comparten id, y comparar por id marcaba "Seguí acá" en las dos.
+                          const isRecommendedNext = position === nextExercise?.position;
 
                           return (
                             <Pressable

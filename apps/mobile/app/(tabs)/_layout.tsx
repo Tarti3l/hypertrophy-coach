@@ -37,7 +37,11 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarIcon: ({ color }) => <Icon name={tab.icon} color={String(color)} size={23} />
+            tabBarIcon: ({ color }) => <Icon name={tab.icon} color={String(color)} size={23} />,
+            // "Entrenamiento" se oculta de la barra (ver docs/plan-diseno.md): a la
+            // pantalla se llega desde "Empezar entrenamiento" en Inicio, no tocando acá.
+            // `href: null` saca la pestaña de la barra sin sacar la ruta ni la pantalla.
+            ...(tab.name === 'training' ? { href: null } : null)
           }}
         />
       ))}

@@ -17,7 +17,9 @@ import { CARDIO_PLACEMENT_LABELS } from '../types/split';
 
 export function RoutinesScreen() {
   const router = useRouter();
-  const goBack = useGoBack('/(tabs)/training');
+  // La pestaña de Entrenamiento está oculta de la barra: caer ahí sin historial
+  // dejaría al socio en una pantalla sin ningún enlace visible para salir.
+  const goBack = useGoBack('/(tabs)');
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);

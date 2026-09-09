@@ -345,7 +345,16 @@ export function ActiveWorkoutScreen() {
   }, [session.isFinished, router]);
 
   /**
-   * El siguiente ejercicio sin terminar, empezando por el que va después del actual.
+   * Al entrar sin ninguna serie registrada todavía, "siguiente" no puede significar
+   * "después del actual": `currentIndex` arranca en 0 (el primero de la lista), así
+   * que buscar desde `currentIndex + 1` se saltaba ese primero y recomendaba el
+   * segundo. Antes del primer registro, el recomendado es el primer pendiente en el
+   * orden de la lista. Con progreso, sigue rotando a partir del actual, como hoy.
+   */
+  const hasAnyProgress = session.completedSetCount > 0;
+
+  /**
+   * El siguiente ejercicio sin terminar.
    *
    * Guarda también `position` (el índice en `visibleExercises`), no solo el ejercicio:
    * si una rutina tiene el mismo ejercicio dos veces (dato que el constructor ya no
@@ -353,18 +362,26 @@ export function ActiveWorkoutScreen() {
    * "Seguí acá" en las dos filas a la vez. La posición distingue cuál de las dos es.
    */
   const nextExercise = useMemo(() => {
-    if (visibleExercises.length === 0 || currentIndex < 0) return null;
+    if (visibleExercises.length === 0) return null;
+
+    const isPending = (exercise: TrainingExercise) => {
+      const sets = session.setsByExercise[exercise.id];
+      return !sets || sets.length === 0 || sets.some((set) => !set.completed);
+    };
+
+    if (!hasAnyProgress) {
+      const position = visibleExercises.findIndex(isPending);
+      return position === -1 ? null : { exercise: visibleExercises[position], position };
+    }
+
+    if (currentIndex < 0) return null;
     const rotatedPositions = [
       ...Array.from({ length: visibleExercises.length - currentIndex - 1 }, (_, i) => currentIndex + 1 + i),
       ...Array.from({ length: currentIndex }, (_, i) => i)
     ];
-    const position = rotatedPositions.find((index) => {
-      const exercise = visibleExercises[index];
-      const sets = session.setsByExercise[exercise.id];
-      return !sets || sets.length === 0 || sets.some((set) => !set.completed);
-    });
+    const position = rotatedPositions.find((index) => isPending(visibleExercises[index]));
     return position === undefined ? null : { exercise: visibleExercises[position], position };
-  }, [visibleExercises, currentIndex, session.setsByExercise]);
+  }, [visibleExercises, currentIndex, session.setsByExercise, hasAnyProgress]);
 
   /**
    * Vuelve sola a la lista cuando el ejercicio actual PASA a estar terminado mientras
@@ -663,6 +680,14 @@ export function ActiveWorkoutScreen() {
                             <Text style={styles.sinImagenText}>Sin foto</Text>
                           </View>
                         )}
+                        {/* La única tarjeta sin el +/- que sí tienen las demás (descuido del
+                            [D5]): sin esto no se veía que este grupo también se puede plegar.
+                            Arriba, no abajo, porque el velo recién oscurece desde la mitad de
+                            la foto — la esquina superior no tiene el contraste del texto. */}
+                        <View style={styles.groupHeroToggle}>
+                          <Text style={styles.groupHeroChevron}>{isGroupOpen ? '−' : '+'}</Text>
+                        </View>
+
                         <View style={styles.groupHeroText}>
                           <Text style={styles.startHereTag}>Empezá por acá</Text>
                           <Text style={[styles.groupHeroName, !groupPhoto && styles.groupNameSinFoto]}>{groupLabel}</Text>
@@ -931,6 +956,20 @@ function createStyles(colors: ThemeColors) {
     groupThumb: { borderRadius: radii.sm, height: 52, width: 52 },
     groupHero: { height: 184, justifyContent: 'flex-end' },
     groupHeroImage: { height: '100%', position: 'absolute', width: '100%' },
+    // Fondo propio, no solo el velo de la foto: la esquina superior de una foto
+    // cualquiera puede ser clara, y el signo tiene que leerse igual sobre cualquiera.
+    groupHeroToggle: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      borderRadius: radii.pill,
+      height: 44,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: spacing.sm,
+      top: spacing.sm,
+      width: 44
+    },
+    groupHeroChevron: { color: colors.onAccent, fontFamily: typography.display, fontSize: 22, fontWeight: '800' },
     groupHeroText: { gap: 2, padding: spacing.md },
     groupHeroName: { ...type.sectionTitle, color: colors.onAccent },
     groupHeroMeta: { ...type.small, color: colors.onAccent, opacity: 0.9 },

@@ -162,7 +162,13 @@ export function LogMealScreen() {
       // Si el usuario cambió los gramos a mano, la etiqueta de porción ya no describe lo que comió.
       portionLabel: activePortion && Math.abs(activePortion.grams - grams) < 0.5 ? activePortion.label : null,
       preparation: selected.preparation,
-      ...preview
+      // meal_entries exige un número (es historial, no catálogo): un macro que la fuente
+      // no midió se guarda como 0, igual que ya hace el registro manual, pero el usuario
+      // ya lo vio marcado como "no reportado" arriba, así que no es un 0 silencioso.
+      energyKcal: preview.energyKcal ?? 0,
+      proteinG: preview.proteinG ?? 0,
+      carbsG: preview.carbsG ?? 0,
+      fatG: preview.fatG ?? 0
     });
   }
 
@@ -293,7 +299,7 @@ export function LogMealScreen() {
                 results.map((food) => (
                   <Pressable key={food.id} accessibilityRole="button" onPress={() => chooseFood(food)} style={styles.resultRow}>
                     <Text style={styles.resultName}>{food.name}</Text>
-                    <Text style={styles.resultMeta}>{Math.round(food.energyKcal)} kcal · {food.proteinG} g proteína por 100 g</Text>
+                    <Text style={styles.resultMeta}>{formatKcal(food.energyKcal)} · {formatMacro(food.proteinG, 'proteína')} por 100 g</Text>
                     <View style={styles.metaPills}>
                       <Text style={styles.metaPill}>{FOOD_PREPARATION_LABELS[food.preparation]}</Text>
                     </View>
@@ -340,7 +346,7 @@ export function LogMealScreen() {
 
                 {preview ? (
                   <Text style={styles.preview}>
-                    {Math.round(preview.energyKcal)} kcal · {preview.proteinG} g proteína · {preview.carbsG} g carbos · {preview.fatG} g grasas
+                    {formatKcal(preview.energyKcal)} · {formatMacro(preview.proteinG, 'proteína')} · {formatMacro(preview.carbsG, 'carbos')} · {formatMacro(preview.fatG, 'grasas')}
                   </Text>
                 ) : (
                   <Text style={styles.hint}>Escribe una cantidad entre 1 y 3000 gramos.</Text>
@@ -402,6 +408,17 @@ function describeShortcutError(cause: unknown): string {
   if (code === '42501' || code === 'PGRST301') return 'Tu sesión expiró. Vuelve a iniciar sesión para guardar atajos.';
 
   return 'No pudimos guardar el atajo. Revisa tu conexión e inténtalo de nuevo.';
+}
+
+// Un macro null es un dato que la fuente TPCA no midió, no un cero: mostrarlo como
+// "no reportado" en vez de "0 g" evita que un socio crea que un alimento no tiene ese
+// nutriente cuando en realidad nunca se lo midieron.
+function formatMacro(value: number | null, label: string): string {
+  return value === null ? `${label} no reportada` : `${value} g ${label}`;
+}
+
+function formatKcal(value: number | null): string {
+  return value === null ? 'kcal no reportadas' : `${Math.round(value)} kcal`;
 }
 
 function defaultMealType(): MealType {

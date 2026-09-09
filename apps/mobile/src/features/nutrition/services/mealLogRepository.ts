@@ -13,9 +13,10 @@ type EntryRow = {
   carbs_g: number;
   fat_g: number;
   preparation: FoodPreparation | null;
+  food_id: string | null;
 };
 
-const SELECT = 'id, meal_type, label, quantity_grams, portion_label, energy_kcal, protein_g, carbs_g, fat_g, preparation';
+const SELECT = 'id, meal_type, label, quantity_grams, portion_label, energy_kcal, protein_g, carbs_g, fat_g, preparation, food_id';
 
 export async function addMealEntry(entry: NewMealEntry, date = new Date()): Promise<void> {
   const client = requireSupabase();
@@ -49,7 +50,35 @@ export async function getDayEntries(date = new Date()): Promise<MealEntry[]> {
     .order('created_at', { ascending: true });
 
   if (error) throw error;
-  return ((data ?? []) as EntryRow[]).map(toEntry);
+  const rows = (data ?? []) as EntryRow[];
+  const incompleteFoodIds = await findIncompleteFoodIds(rows);
+  return rows.map((row) => toEntry(row, incompleteFoodIds));
+}
+
+/**
+ * Alimentos del catálogo con algún macro sin medir por la fuente (TPCA 2023), para
+ * avisar cuando el total del día incluye uno de ellos en vez de sumarlo como si el
+ * dato faltante fuera 0. Se resuelve en la lectura, no se guarda en meal_entries:
+ * esa tabla guarda el macro ya calculado al momento de comer, no su completitud.
+ */
+async function findIncompleteFoodIds(rows: EntryRow[]): Promise<Set<string>> {
+  const foodIds = [...new Set(rows.map((row) => row.food_id).filter((id): id is string => id !== null))];
+  if (foodIds.length === 0) return new Set();
+
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('foods')
+    .select('id, energy_kcal, protein_g, carbs_g, fat_g')
+    .in('id', foodIds);
+  if (error) throw error;
+
+  const incomplete = new Set<string>();
+  for (const food of (data ?? []) as { id: string; energy_kcal: number | null; protein_g: number | null; carbs_g: number | null; fat_g: number | null }[]) {
+    if (food.energy_kcal === null || food.protein_g === null || food.carbs_g === null || food.fat_g === null) {
+      incomplete.add(food.id);
+    }
+  }
+  return incomplete;
 }
 
 export async function deleteMealEntry(id: string): Promise<void> {
@@ -96,11 +125,12 @@ export function sumEntries(entries: MealEntry[]): DailyMacroConsumption {
     calories: total.calories + entry.energyKcal,
     proteinGrams: total.proteinGrams + entry.proteinG,
     carbsGrams: total.carbsGrams + entry.carbsG,
-    fatGrams: total.fatGrams + entry.fatG
-  }), { calories: 0, proteinGrams: 0, carbsGrams: 0, fatGrams: 0 });
+    fatGrams: total.fatGrams + entry.fatG,
+    hasIncompleteData: total.hasIncompleteData || entry.hasIncompleteMacros
+  }), { calories: 0, proteinGrams: 0, carbsGrams: 0, fatGrams: 0, hasIncompleteData: false });
 }
 
-function toEntry(row: EntryRow): MealEntry {
+function toEntry(row: EntryRow, incompleteFoodIds: Set<string> = new Set()): MealEntry {
   return {
     id: row.id,
     mealType: row.meal_type,
@@ -111,7 +141,8 @@ function toEntry(row: EntryRow): MealEntry {
     proteinG: Number(row.protein_g),
     carbsG: Number(row.carbs_g),
     fatG: Number(row.fat_g),
-    preparation: row.preparation
+    preparation: row.preparation,
+    hasIncompleteMacros: row.food_id !== null && incompleteFoodIds.has(row.food_id)
   };
 }
 

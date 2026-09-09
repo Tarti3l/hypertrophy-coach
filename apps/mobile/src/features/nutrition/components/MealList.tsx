@@ -65,6 +65,7 @@ export function MealList({ entries, isInitialLoading, error, onDelete }: MealLis
                   <Text style={styles.label}>{entry.label}</Text>
                   <Text style={styles.detail}>
                     {entry.portionLabel ?? (entry.quantityGrams !== null ? `${entry.quantityGrams} g` : 'A mano')} · {Math.round(entry.energyKcal)} kcal · {Math.round(entry.proteinG)} g proteína
+                    {entry.hasIncompleteMacros ? ' · macros incompletos' : ''}
                   </Text>
                 </View>
                 <Pressable

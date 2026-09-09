@@ -5,6 +5,8 @@ export type DailyMacroConsumption = {
   proteinGrams: number;
   carbsGrams: number;
   fatGrams: number;
+  /** true si alguna comida de hoy vino de un alimento sin todos sus macros medidos por la fuente. */
+  hasIncompleteData: boolean;
 };
 
 export type MacroDashboardData = {
@@ -50,16 +52,20 @@ export const FOOD_PREPARATION_LABELS: Record<FoodPreparation, string> = {
   no_especificado: 'Preparación no especificada'
 };
 
-/** Composición por 100 g de porción comestible, como la publican las tablas. */
+/**
+ * Composición por 100 g de porción comestible, como la publican las tablas.
+ * Un macro en null es un dato que la fuente no midió (marcado '•' en la TPCA), no un
+ * cero: no lo trates como 0 en ningún cálculo ni lo muestres como número.
+ */
 export type Food = {
   id: string;
   slug: string;
   name: string;
   category: string;
-  energyKcal: number;
-  proteinG: number;
-  carbsG: number;
-  fatG: number;
+  energyKcal: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
   source: string;
   preparation: FoodPreparation;
   tpcaCode: string | null;
@@ -77,6 +83,8 @@ export type MealEntry = {
   carbsG: number;
   fatG: number;
   preparation: FoodPreparation | null;
+  /** true si el alimento de origen no tenía todos los macros medidos por la fuente. */
+  hasIncompleteMacros: boolean;
 };
 
 export type NewMealEntry = {
@@ -92,15 +100,29 @@ export type NewMealEntry = {
   preparation: FoodPreparation | null;
 };
 
-/** Escala la composición por 100 g a la cantidad realmente consumida. */
-export function scaleFood(food: Food, grams: number): Pick<NewMealEntry, 'energyKcal' | 'proteinG' | 'carbsG' | 'fatG'> {
+export type ScaledMacros = {
+  energyKcal: number | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+};
+
+/**
+ * Escala la composición por 100 g a la cantidad realmente consumida. Un macro null en
+ * el alimento (no medido por la fuente) se mantiene null: escalarlo no lo inventa.
+ */
+export function scaleFood(food: Food, grams: number): ScaledMacros {
   const factor = grams / 100;
   return {
-    energyKcal: round1(food.energyKcal * factor),
-    proteinG: round1(food.proteinG * factor),
-    carbsG: round1(food.carbsG * factor),
-    fatG: round1(food.fatG * factor)
+    energyKcal: scaleValue(food.energyKcal, factor),
+    proteinG: scaleValue(food.proteinG, factor),
+    carbsG: scaleValue(food.carbsG, factor),
+    fatG: scaleValue(food.fatG, factor)
   };
+}
+
+function scaleValue(value: number | null, factor: number): number | null {
+  return value === null ? null : round1(value * factor);
 }
 
 function round1(value: number): number {

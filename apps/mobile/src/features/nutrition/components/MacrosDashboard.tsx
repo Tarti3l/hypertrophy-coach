@@ -78,6 +78,11 @@ export function MacrosDashboard({ plan, consumed, hasEntries, hasLoaded, isLoadi
           ? 'Incluye solo las comidas que registraste hoy. La meta es una referencia de tu onboarding.'
           : 'Todavía no hay comidas registradas hoy. La meta se mantiene como referencia.'}
       </Text>
+      {hasEntries && consumed.hasIncompleteData ? (
+        <Text style={styles.warning}>
+          Uno de los alimentos de hoy no reportó todos sus macros. El total puede estar por debajo de lo real.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -117,6 +122,7 @@ function createStyles(colors: ThemeColors) {
     macroLabel: { color: colors.text, flexShrink: 1, fontFamily: typography.body, fontSize: 15, fontWeight: '600' },
     macroAmount: { color: colors.textMuted, flexShrink: 1, fontFamily: typography.body, fontSize: 14, fontVariant: ['tabular-nums'], textAlign: 'right' },
     note: { color: colors.textMuted, fontFamily: typography.body, fontSize: 12, lineHeight: 18, marginTop: spacing.lg },
+    warning: { color: colors.warning, fontFamily: typography.body, fontSize: 12, fontWeight: '700', lineHeight: 18, marginTop: spacing.xs },
     loadingRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
     loadingText: { color: colors.textMuted, flex: 1, fontFamily: typography.body, fontSize: 15, lineHeight: 22 },
     stateText: { color: colors.textMuted, flex: 1, fontFamily: typography.body, fontSize: 15, lineHeight: 22, marginTop: spacing.md },

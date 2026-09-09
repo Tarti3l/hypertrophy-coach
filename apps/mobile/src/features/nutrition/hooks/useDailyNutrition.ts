@@ -4,7 +4,7 @@ import { useFocusEffect } from 'expo-router';
 import { getDayEntries, getFrequentEntries, sumEntries } from '../services/mealLogRepository';
 import { DailyMacroConsumption, MealEntry } from '../types/nutrition';
 
-const EMPTY: DailyMacroConsumption = { calories: 0, proteinGrams: 0, carbsGrams: 0, fatGrams: 0 };
+const EMPTY: DailyMacroConsumption = { calories: 0, proteinGrams: 0, carbsGrams: 0, fatGrams: 0, hasIncompleteData: false };
 
 type DailyNutritionState = {
   entries: MealEntry[];

@@ -8,10 +8,10 @@ type FoodRow = {
   slug: string;
   name: string;
   category: string;
-  energy_kcal: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
+  energy_kcal: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
   source: string;
   preparation: FoodPreparation;
   tpca_code: string | null;
@@ -56,7 +56,9 @@ export async function getKcalRangeByTpcaCode(tpcaCode: string | null): Promise<{
   const { data, error } = await client.from('foods').select('energy_kcal').eq('tpca_code', tpcaCode).eq('is_published', true);
   if (error) throw error;
 
-  const values = (data ?? []).map((row) => Number((row as { energy_kcal: number }).energy_kcal));
+  const values = (data ?? [])
+    .map((row) => (row as { energy_kcal: number | null }).energy_kcal)
+    .filter((value): value is number => value !== null);
   if (values.length <= 1) return null;
 
   return { min: Math.min(...values), max: Math.max(...values) };
@@ -78,13 +80,17 @@ function toFood(row: FoodRow): Food {
     slug: row.slug,
     name: row.name,
     category: row.category,
-    energyKcal: Number(row.energy_kcal),
-    proteinG: Number(row.protein_g),
-    carbsG: Number(row.carbs_g),
-    fatG: Number(row.fat_g),
+    energyKcal: numOrNull(row.energy_kcal),
+    proteinG: numOrNull(row.protein_g),
+    carbsG: numOrNull(row.carbs_g),
+    fatG: numOrNull(row.fat_g),
     source: row.source,
     preparation: row.preparation,
     tpcaCode: row.tpca_code,
     portions
   };
+}
+
+function numOrNull(value: number | null): number | null {
+  return value === null ? null : Number(value);
 }

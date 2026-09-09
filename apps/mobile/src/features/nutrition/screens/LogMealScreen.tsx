@@ -10,10 +10,20 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { palette, radii, spacing, ThemeColors, type, typography } from '@/theme/tokens';
 
 import { ShortcutRow } from '../components/ShortcutRow';
-import { searchFoods } from '../services/foodRepository';
+import { getKcalRangeByTpcaCode, searchFoods } from '../services/foodRepository';
 import { deleteShortcut, listShortcuts, saveShortcut } from '../services/foodShortcutRepository';
 import { addMealEntry, getFrequentEntries } from '../services/mealLogRepository';
-import { Food, FoodShortcut, MealEntry, MealType, MEAL_TYPES, NewFoodShortcut, NewMealEntry, scaleFood } from '../types/nutrition';
+import {
+  Food,
+  FoodShortcut,
+  FOOD_PREPARATION_LABELS,
+  MealEntry,
+  MealType,
+  MEAL_TYPES,
+  NewFoodShortcut,
+  NewMealEntry,
+  scaleFood
+} from '../types/nutrition';
 
 type Mode = 'buscar' | 'manual';
 
@@ -35,6 +45,7 @@ export function LogMealScreen() {
   const [selected, setSelected] = useState<Food | null>(null);
   const [portionId, setPortionId] = useState<string | null>(null);
   const [gramsText, setGramsText] = useState('');
+  const [kcalRange, setKcalRange] = useState<{ min: number; max: number } | null>(null);
 
   const [frequent, setFrequent] = useState<MealEntry[]>([]);
   const [shortcuts, setShortcuts] = useState<FoodShortcut[]>([]);
@@ -98,9 +109,14 @@ export function LogMealScreen() {
   function chooseFood(food: Food) {
     setSelected(food);
     setError(null);
+    setKcalRange(null);
     const preferred = food.portions.find((portion) => portion.isDefault) ?? food.portions[0] ?? null;
     setPortionId(preferred?.id ?? null);
     setGramsText(preferred ? String(preferred.grams) : '100');
+
+    void getKcalRangeByTpcaCode(food.tpcaCode)
+      .then((range) => { if (isMountedRef.current) setKcalRange(range); })
+      .catch(() => undefined);
   }
 
   const grams = Number(gramsText.replace(',', '.'));
@@ -131,7 +147,8 @@ export function LogMealScreen() {
       energyKcal: shortcut.energyKcal,
       proteinG: shortcut.proteinG,
       carbsG: shortcut.carbsG,
-      fatG: shortcut.fatG
+      fatG: shortcut.fatG,
+      preparation: null
     });
   }, [mealType, save]);
 
@@ -144,6 +161,7 @@ export function LogMealScreen() {
       quantityGrams: grams,
       // Si el usuario cambió los gramos a mano, la etiqueta de porción ya no describe lo que comió.
       portionLabel: activePortion && Math.abs(activePortion.grams - grams) < 0.5 ? activePortion.label : null,
+      preparation: selected.preparation,
       ...preview
     });
   }
@@ -166,7 +184,8 @@ export function LogMealScreen() {
       energyKcal: kcal,
       proteinG: Number.isFinite(protein) && protein >= 0 ? protein : 0,
       carbsG: Number.isFinite(carbs) && carbs >= 0 ? carbs : 0,
-      fatG: Number.isFinite(fat) && fat >= 0 ? fat : 0
+      fatG: Number.isFinite(fat) && fat >= 0 ? fat : 0,
+      preparation: null
     });
   }
 
@@ -180,7 +199,8 @@ export function LogMealScreen() {
       energyKcal: entry.energyKcal,
       proteinG: entry.proteinG,
       carbsG: entry.carbsG,
-      fatG: entry.fatG
+      fatG: entry.fatG,
+      preparation: entry.preparation
     });
   }
 
@@ -274,12 +294,23 @@ export function LogMealScreen() {
                   <Pressable key={food.id} accessibilityRole="button" onPress={() => chooseFood(food)} style={styles.resultRow}>
                     <Text style={styles.resultName}>{food.name}</Text>
                     <Text style={styles.resultMeta}>{Math.round(food.energyKcal)} kcal · {food.proteinG} g proteína por 100 g</Text>
+                    <View style={styles.metaPills}>
+                      <Text style={styles.metaPill}>{FOOD_PREPARATION_LABELS[food.preparation]}</Text>
+                    </View>
                   </Pressable>
                 ))
               )
             ) : (
               <View style={styles.selection}>
                 <Text style={styles.resultName}>{selected.name}</Text>
+                <View style={styles.metaPills}>
+                  <Text style={styles.metaPill}>{FOOD_PREPARATION_LABELS[selected.preparation]}</Text>
+                </View>
+                {kcalRange ? (
+                  <Text style={styles.hint}>
+                    Entre {Math.round(kcalRange.min)} y {Math.round(kcalRange.max)} kcal por 100 g según la preparación.
+                  </Text>
+                ) : null}
 
                 {selected.portions.length > 0 ? (
                   <View style={styles.chipRow}>
@@ -407,6 +438,18 @@ function createStyles(colors: ThemeColors) {
     resultRow: { borderColor: colors.line, borderTopWidth: 1, gap: 2, justifyContent: 'center', minHeight: 60, paddingVertical: spacing.sm },
     resultName: { color: colors.text, fontFamily: typography.body, fontSize: 15, fontWeight: '600' },
     resultMeta: { color: colors.textMuted, fontFamily: typography.body, fontSize: 12, lineHeight: 18 },
+    metaPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
+    metaPill: {
+      ...type.label,
+      backgroundColor: colors.surface,
+      borderColor: colors.line,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      color: colors.textLabel,
+      overflow: 'hidden',
+      paddingHorizontal: 12,
+      paddingVertical: 7
+    },
     selection: { gap: spacing.xs },
     fieldLabel: { color: colors.textMuted, fontFamily: typography.body, fontSize: 13, fontWeight: '700', marginTop: spacing.sm },
     preview: { color: colors.accent, fontFamily: typography.body, fontSize: 14, fontWeight: '700', lineHeight: 20, marginTop: spacing.xs },

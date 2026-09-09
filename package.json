@@ -12,5 +12,8 @@
     "db:push": "npx supabase db push",
     "db:status": "npx supabase migration list",
     "media:check": "node scripts/check-exercise-media.mjs"
+  },
+  "devDependencies": {
+    "xlsx": "0.18.5"
   }
 }

@@ -220,6 +220,14 @@ const byPrep = {};
 for (const f of [...rawFoods, ...preparations]) byPrep[f.preparation] = (byPrep[f.preparation] ?? 0) + 1;
 console.log('Por preparation:', JSON.stringify(byPrep));
 
+const allFoods = [...rawFoods, ...preparations];
+const MACRO_FIELDS = { energy_kcal: 'energyKcal', protein_g: 'proteinG', carbs_g: 'carbsG', fat_g: 'fatG' };
+console.log('\n--- Nulls en las 4 columnas de macros (antes not null), sobre', allFoods.length, 'alimentos ---');
+for (const [col, field] of Object.entries(MACRO_FIELDS)) {
+  const nulls = allFoods.filter((f) => f[field] === null);
+  console.log(`  ${col}: ${nulls.length} null` + (nulls.length > 0 ? ` — ej.: ${nulls.slice(0, 5).map((f) => f.code).join(', ')}` : ''));
+}
+
 // ---------- SQL ----------
 const COLS = [
   'slug', 'name', 'category', 'energy_kcal', 'energy_kj', 'water_g', 'protein_g', 'fat_g',

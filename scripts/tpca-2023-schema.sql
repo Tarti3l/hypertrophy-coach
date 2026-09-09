@@ -53,6 +53,20 @@
 -- Las 1103 preparaciones van directo a 'preparado': son platos listos, no alimentos
 -- crudos o cocidos por separado.
 
+-- Los 2017 macros de energy_kcal/protein_g/carbs_g/fat_g se cargaron como not null
+-- (00005_nutrition_log.sql), pero la fuente 2023 sí deja nutrientes sin medir (marcados
+-- '•' en el Excel) y esa falta es un dato real, no un cero: rellenar con 0 le diría a un
+-- socio que un alimento tiene 0 g de proteína cuando en realidad la fuente no la midió.
+-- Se relaja el not null de las cuatro columnas; los check (>= 0) quedan igual, porque un
+-- check no se viola con null. meal_entries no se toca: ahí los macros se guardan ya
+-- calculados al momento de comer y tienen que seguir siendo not null (es historial de la
+-- persona, no catálogo).
+alter table public.foods
+  alter column energy_kcal drop not null,
+  alter column protein_g drop not null,
+  alter column carbs_g drop not null,
+  alter column fat_g drop not null;
+
 create type public.food_preparation as enum (
   'crudo', 'cocido', 'tostado', 'frito', 'seco', 'fresco', 'preparado', 'no_especificado'
 );

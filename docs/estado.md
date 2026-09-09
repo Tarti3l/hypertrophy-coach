@@ -27,7 +27,7 @@ empiece una sesión lo lee primero.
 | [8] Prellenar la siguiente serie | pendiente | | |
 | [9] Mostrar la próxima serie durante el descanso | pendiente | | Reemplaza la presentación que preveía el antiguo [9] |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
-| [16] Reemplazar el catálogo por la TPCA 2023 | pendiente | | M: ~2.900 filas. Fuente en `docs/fuentes/` |
+| [16] Reemplazar el catálogo por la TPCA 2023 | en revisión | #22 | Esquema, migración (sin aplicar al remoto) y UI mínima listos, `pnpm typecheck` verde. Falta que el dueño del repo corra `pnpm db:push` y verifique en vivo (pill, "no especificada", ambas variantes de "arroz") |
 | [17] Incorporar porciones medidas | bloqueado | | **Bloqueado por el dueño**: hay que pesar porciones reales con balanza. Ningún agente puede producir ese dato |
 | [18] Seguimiento de peso corporal | pendiente | | |
 | [11] Verificar el recorrido integrado en web y en iPhone | pendiente | | Cierra la tanda |
@@ -215,6 +215,20 @@ entrada con fecha y de qué item salió.
   de la pantalla; no se investigó más ni se corrigió, queda fuera del alcance
   del [19]. Si se repite reportado por un usuario real, hay que revisar la
   carrera en esos dos efectos.
+- **2026-09-08, item [16]:** el conteo de "~2.900 filas" de la fuente TPCA 2023
+  citado en el plan era incorrecto. La hoja maestra del Excel ("TPCA EDICIÓN 11
+  2023") no contiene solo alimentos simples: a partir de la fila 1197 (0-indexed)
+  repite completa la sección "S - ALIMENTOS PREPARADOS", así que un conteo
+  ingenuo de toda la hoja da ~2243-2244 filas, contando cada preparación dos
+  veces. El número real es **1125 alimentos simples** (grupos A-U, filas 8-1196
+  de la maestra) + **1103 preparaciones** (hoja aparte "S- Alimentos
+  Preparados", verificado que coincide exactamente con la sección duplicada
+  dentro de la maestra) = 2228 filas distintas. El script de generación
+  (`scripts/generate-tpca-2023-migration.mjs`) acota la lectura de la maestra a
+  las filas 8-1196 para no insertar cada preparación dos veces. Detalle completo
+  de conteos por grupo y por `preparation`, y el hallazgo de que 884/884 códigos
+  de la edición 2017 siguen existiendo en 2023, en la migración
+  `supabase/migrations/00023_food_catalog_tpca_2023.sql` y en la PR #22.
 - **2026-09-06, item [19] — resuelto:** causa confirmada del reporte de "el
   mismo ejercicio dos veces" en el modo lista. No es un problema de datos:
   verificado por consulta directa, ni el catálogo `exercises` tiene dos filas

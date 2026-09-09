@@ -1,6 +1,6 @@
 import { requireSupabase, requireUserId } from '@/lib/supabase';
 
-import { DailyMacroConsumption, MealEntry, MealType, NewMealEntry } from '../types/nutrition';
+import { DailyMacroConsumption, FoodPreparation, MealEntry, MealType, NewMealEntry } from '../types/nutrition';
 
 type EntryRow = {
   id: string;
@@ -12,9 +12,10 @@ type EntryRow = {
   protein_g: number;
   carbs_g: number;
   fat_g: number;
+  preparation: FoodPreparation | null;
 };
 
-const SELECT = 'id, meal_type, label, quantity_grams, portion_label, energy_kcal, protein_g, carbs_g, fat_g';
+const SELECT = 'id, meal_type, label, quantity_grams, portion_label, energy_kcal, protein_g, carbs_g, fat_g, preparation';
 
 export async function addMealEntry(entry: NewMealEntry, date = new Date()): Promise<void> {
   const client = requireSupabase();
@@ -31,7 +32,8 @@ export async function addMealEntry(entry: NewMealEntry, date = new Date()): Prom
     energy_kcal: entry.energyKcal,
     protein_g: entry.proteinG,
     carbs_g: entry.carbsG,
-    fat_g: entry.fatG
+    fat_g: entry.fatG,
+    preparation: entry.preparation
   });
 
   if (error) throw error;
@@ -108,7 +110,8 @@ function toEntry(row: EntryRow): MealEntry {
     energyKcal: Number(row.energy_kcal),
     proteinG: Number(row.protein_g),
     carbsG: Number(row.carbs_g),
-    fatG: Number(row.fat_g)
+    fatG: Number(row.fat_g),
+    preparation: row.preparation
   };
 }
 

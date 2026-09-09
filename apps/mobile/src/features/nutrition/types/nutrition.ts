@@ -28,6 +28,28 @@ export type FoodPortion = {
   isDefault: boolean;
 };
 
+/** Estado del alimento tal como lo declara el nombre de la fuente (TPCA). */
+export type FoodPreparation =
+  | 'crudo'
+  | 'cocido'
+  | 'tostado'
+  | 'frito'
+  | 'seco'
+  | 'fresco'
+  | 'preparado'
+  | 'no_especificado';
+
+export const FOOD_PREPARATION_LABELS: Record<FoodPreparation, string> = {
+  crudo: 'Crudo',
+  cocido: 'Cocido',
+  tostado: 'Tostado',
+  frito: 'Frito',
+  seco: 'Seco',
+  fresco: 'Fresco',
+  preparado: 'Preparado',
+  no_especificado: 'Preparación no especificada'
+};
+
 /** Composición por 100 g de porción comestible, como la publican las tablas. */
 export type Food = {
   id: string;
@@ -39,6 +61,8 @@ export type Food = {
   carbsG: number;
   fatG: number;
   source: string;
+  preparation: FoodPreparation;
+  tpcaCode: string | null;
   portions: FoodPortion[];
 };
 
@@ -52,6 +76,7 @@ export type MealEntry = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  preparation: FoodPreparation | null;
 };
 
 export type NewMealEntry = {
@@ -64,6 +89,7 @@ export type NewMealEntry = {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  preparation: FoodPreparation | null;
 };
 
 /** Escala la composición por 100 g a la cantidad realmente consumida. */

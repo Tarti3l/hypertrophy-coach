@@ -13,7 +13,7 @@ empiece una sesión lo lee primero.
 | [1] Alinear la documentación con el producto del gimnasio | hecho | #2 | |
 | [2] Definir el recorrido mínimo y registrar su estado actual | hecho | #4 | `docs/recorrido-minimo.md`; 4/6 casos OK |
 | [3] Corregir la pérdida de series de la sesión activa | hecho | #6 | Verificado en iPhone real: funciona en nativo |
-| [4] Sustituir los consumos ficticios por los registros reales | en revisión | #8 | Falta verificación en dispositivo: registrar comida, ver totales, recargar |
+| [4] Sustituir los consumos ficticios por los registros reales | hecho | #8 | Verificado en vivo (Expo Web): día vacío muestra "0 kcal registradas" y "Todavía no registraste nada" (ya no hay consumos de ejemplo hardcodeados). Registrar una comida actualiza los totales correctamente; recargar la página (reload real) los conserva, confirmando persistencia en Supabase y no solo estado de cliente. Quitar un registro también persiste tras recargar. Registrar dos comidas seguidas suma bien los totales (178.5 + 75 = 253.5 kcal exacto). Sin errores de consola en todo el recorrido. |
 | [5] Corregir los estados de desconexión | hecho | #7 | |
 | [T1] Dejar `pnpm typecheck` en verde | hecho | #9 | Era un typo: `'abdomen'` por `'abs'` |
 | [T2] CI mínimo | hecho | #11 | Corre typecheck en cada PR. No bloquea el merge: los rulesets no se aplican en repos privados del plan gratuito |

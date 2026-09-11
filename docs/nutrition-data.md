@@ -50,12 +50,22 @@ rango plausible, que es como se detecta una columna cruzada.
 
 ## Datos incompletos
 
-58 alimentos no reportan alguno de los macronutrientes: la TPCA marca esas celdas con `•`.
-Se guardan con **0** en el valor faltante y con `data_incomplete = true`.
+La TPCA marca con `•` las celdas que no midió. Sobre los 2228 alimentos de la edición
+2023, 1157 tienen `data_incomplete = true` (les falta alguna de las 21 columnas), y 44
+tienen en null alguno de los cuatro macros: `protein_g` en 7, `carbs_g` en 39, `fat_g`
+en 7, `energy_kcal` en ninguno.
 
-La alternativa era descartarlos, pero entre ellos está el atún en conserva: un catálogo
-peruano sin atún sería peor que uno con un cero declarado. La bandera existe para poder
-mostrarlo en la interfaz cuando haga falta.
+**El valor que falta se guarda como `null`, nunca como 0.** Un nutriente no reportado no
+es un nutriente ausente: poner 0 le diría a un socio que el jugo de cocona no tiene
+proteína, que es un dato inventado. Por eso `foods` dejó de exigir not null en esas
+cuatro columnas (migración 00023) y la interfaz muestra "no reportada" en vez de un
+número. Los totales del día avisan cuando incluyen un alimento con datos faltantes.
+
+En `meal_entries` los macros **sí** siguen siendo not null: ahí el valor se calcula al
+momento de comer y es el historial de la persona, no el catálogo.
+
+La alternativa era descartar esos alimentos, pero entre ellos está el atún en conserva:
+un catálogo peruano sin atún sería peor que uno que admite lo que no sabe.
 
 ## Porciones caseras
 
@@ -65,6 +75,25 @@ mostrarlo en la interfaz cuando haga falta.
 **Estas NO provienen de la TPCA.** Son medidas domésticas estimadas. Si se quiere rigor,
 la referencia es la tabla de medidas caseras del CENAN, que se debe citar aparte.
 El resto de los 884 alimentos se registra en gramos.
+
+## Peso corporal
+
+`body_weight_logs` (migración 00024) guarda el historial de peso de cada persona:
+una fila por día y por usuario, con la fecha de la medición que ella elige.
+
+**No participa en el cálculo de macros y no debe hacerlo sin una decisión explícita del
+dueño.** Las metas vigentes salen de `user_profiles` (`weight_kg` y `macro_targets`), se
+calculan una sola vez en el onboarding, y registrar un peso no las recalcula ni toca ese
+perfil. Son dos datos distintos a propósito: uno es el peso declarado con el que se
+estimaron las metas, el otro es lo que la persona se pesa después.
+
+El peso del onboarding **no se copia** a esta tabla. No tiene fecha de medición
+verificable —solo se sabe cuándo se completó el formulario, que es cuándo se declaró, no
+cuándo se pesó—, así que darle una fecha (y menos "hoy") sería inventar un dato. La
+pantalla «Mi peso» lo muestra aparte, etiquetado como declarado y fuera de la evolución.
+
+El `unique (user_id, measured_on)` es lo que impide duplicar mediciones: registrar dos
+veces el mismo día corrige ese día en lugar de crear otra fila.
 
 ## Productos envasados
 

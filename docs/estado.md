@@ -27,7 +27,7 @@ empiece una sesión lo lee primero.
 | [8] Prellenar la siguiente serie | pendiente | | |
 | [9] Mostrar la próxima serie durante el descanso | pendiente | | Reemplaza la presentación que preveía el antiguo [9] |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
-| [16] Reemplazar el catálogo por la TPCA 2023 | en revisión | #22 | Migración 00023 aplicada al remoto (`pnpm db:status`: 00001-00023 sincronizadas local/remoto). Verificado en vivo (Expo Web): el pill "PREPARACIÓN NO ESPECIFICADA" aparece en "Arroz blanco corriente" (cód. A3), y buscando "arroz pilado" aparece "Arroz pilado o pulido cocido" (cód. A2) con pill "COCIDO" — ambas variantes distintas, sin colisión de nombre. Ciclo completo probado: elegir → confirmar 150 g (1 taza) → 173 kcal calculados correctamente → aparece en "Registros de hoy" con fuente "TPCA 2023 (INS/CENAN), cód. A2" → totales del día se actualizan → quitar funciona. Sin errores de consola. **Hallazgo nuevo, ver más abajo: buscar "arroz" a secas no encuentra "Arroz pilado o pulido cocido".** Falta la verificación del dueño del repo en su propio dispositivo. |
+| [16] Reemplazar el catálogo por la TPCA 2023 | en revisión | #22 | Migración 00023 aplicada al remoto (`pnpm db:status`: 00001-00023 sincronizadas local/remoto). Verificado en vivo (Expo Web): el pill "PREPARACIÓN NO ESPECIFICADA" aparece en "Arroz blanco corriente" (cód. A3), y buscando "arroz pilado" aparece "Arroz pilado o pulido cocido" (cód. A2) con pill "COCIDO" — ambas variantes distintas, sin colisión de nombre. Ciclo completo probado: elegir → confirmar 150 g (1 taza) → 173 kcal calculados correctamente → aparece en "Registros de hoy" con fuente "TPCA 2023 (INS/CENAN), cód. A2" → totales del día se actualizan → quitar funciona. Sin errores de consola. Hallazgo de esa verificación (buscar "arroz" a secas no encontraba "Arroz pilado o pulido cocido") ya corregido, ver "Hallazgos que cambian el plan". Falta la verificación del dueño del repo en su propio dispositivo. |
 | [17] Incorporar porciones medidas | bloqueado | | **Bloqueado por el dueño**: hay que pesar porciones reales con balanza. Ningún agente puede producir ese dato |
 | [18] Seguimiento de peso corporal | pendiente | | |
 | [11] Verificar el recorrido integrado en web y en iPhone | pendiente | | Cierra la tanda |
@@ -287,6 +287,12 @@ entrada con fecha y de qué item salió.
   la solución razonable es de base de datos (extensión `unaccent` + índice, o
   una columna normalizada), no de cliente: necesita migración y que el dueño
   la aplique. Vale un item propio.
+
+- **2026-09-11, item [16] — resuelto:** el hallazgo de arriba (buscar "arroz" a
+  secas no encontraba "Arroz pilado o pulido cocido" por el corte de
+  `searchFoods()` en 25 resultados alfabéticos) quedó corregido: el buscador
+  ahora ordena por relevancia en vez de solo alfabético (PR #26,
+  `fix(nutrition): ordenar el buscador de alimentos por relevancia`).
 
 ## Preguntas abiertas
 

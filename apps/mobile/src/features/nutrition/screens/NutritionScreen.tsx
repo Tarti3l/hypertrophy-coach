@@ -68,6 +68,15 @@ export function NutritionScreen() {
             onDelete={(id) => { void deleteMealEntry(id).then(daily.reload).catch(() => undefined); }}
           />
           <HydrationTracker plan={hydration.plan} isLoading={hydration.isLoading} error={hydration.error} onRetry={hydration.reload} />
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Abrir Mi peso"
+            onPress={() => router.push('/my-weight')}
+            style={({ pressed }) => [styles.outlineButton, styles.weightButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.outlineButtonText}>Mi peso</Text>
+          </Pressable>
         </View>
 
         <View style={styles.educationSection}>
@@ -94,6 +103,7 @@ function createStyles(colors: ThemeColors) {
     educationDescription: { color: colors.textMuted, fontFamily: typography.body, fontSize: 15, lineHeight: 22, marginTop: spacing.sm },
     outlineButton: { alignItems: 'center', borderColor: colors.accent, borderRadius: 14, borderWidth: 1, justifyContent: 'center', minHeight: 50, marginTop: spacing.lg },
     outlineButtonText: { color: colors.accent, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },
+    weightButton: { marginTop: spacing.md },
     pressed: { opacity: 0.78 }
   });
 }

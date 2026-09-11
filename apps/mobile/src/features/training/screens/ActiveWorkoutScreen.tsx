@@ -25,6 +25,7 @@ import { ExerciseSwapSheet } from '../components/ExerciseSwapSheet';
 import { RestTimer } from '../components/RestTimer';
 import { useExerciseCatalog } from '../hooks/useExerciseCatalog';
 import { useProgression } from '../hooks/useProgression';
+import type { ProgressionKind } from '../services/progression';
 import { getRoutine } from '../services/routineRepository';
 import { equipmentLabels, normalizeExerciseName } from '../services/exerciseCatalog';
 import { fetchMuscleGroups } from '../services/splitTemplates';
@@ -821,9 +822,7 @@ export function ActiveWorkoutScreen() {
                   la instrucción de con qué peso arrancar cuando no hay historial. */}
               {progression ? (
                 <View style={styles.suggestion}>
-                  <Eyebrow color={colors.accent}>
-                    {progression.kind === 'add-weight' ? 'Toca subir peso' : progression.kind === 'add-reps' ? 'Una repetición más' : progression.kind === 'first-time' ? 'Punto de partida' : 'Consolida'}
-                  </Eyebrow>
+                  <Eyebrow color={colors.accent}>{progressionLabel(progression.kind)}</Eyebrow>
                   <Text style={styles.suggestionText}>{progression.message}</Text>
                 </View>
               ) : null}
@@ -919,6 +918,19 @@ export function ActiveWorkoutScreen() {
       ) : null}
     </SafeAreaView>
   );
+}
+
+const PROGRESSION_LABELS: Record<ProgressionKind, string> = {
+  'first-time': 'Punto de partida',
+  // No es "consolida": la carga de la primera vez se eligió a ojo y todavía está a prueba.
+  'first-reference': 'Revisa el peso de prueba',
+  'add-weight': 'Toca subir peso',
+  'add-reps': 'Una repetición más',
+  repeat: 'Consolida'
+};
+
+function progressionLabel(kind: ProgressionKind): string {
+  return PROGRESSION_LABELS[kind];
 }
 
 function formatReadOnlySet(set: { weightKg: number | null; completedReps: number | null }): string {

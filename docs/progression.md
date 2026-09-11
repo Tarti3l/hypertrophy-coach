@@ -67,10 +67,32 @@ nunca sea "sube 0".
 
 | Situación | Qué sugiere |
 |---|---|
-| Sin historial | Punto de partida: un peso que permita completar el objetivo con buena técnica |
+| Sin historial | Empezar liviano para aprender el movimiento. **Sin número**: la app no inventa un peso |
+| Una sola sesión registrada | Repetir ese mismo peso para revisarlo. No sube nada |
 | Última sesión por debajo del objetivo | Repetir peso hasta llegar al objetivo |
 | Llegó al objetivo, sin superarlo por 2 | Una repetición más, mismo peso |
 | Regla 2-por-2 cumplida | Subir peso y volver al objetivo de repeticiones |
+
+## La primera vez no es una carga validada
+
+Sin historial, la app **no sugiere ningún número**. No existe una tabla publicada de pesos
+iniciales por ejercicio, edad y sexo que sea aplicable a una persona concreta, y
+producirla a ojo sería inventar un dato de entrenamiento. Lo que sí se puede decir con
+fundamento es qué hacer: empezar liviano, porque la primera sesión de un ejercicio sirve
+para aprender el patrón de movimiento, no para averiguar el máximo.
+
+**Una sola sesión no habilita ninguna subida.** El peso de esa primera vez se eligió a
+ojo: que la persona completara las repeticiones no prueba que el peso le quedara corto,
+solo que el que eligió le alcanzó. Por eso, con una única sesión registrada, la
+sugerencia devuelve ese mismo peso para revisarlo y explica que era de prueba. La regla
+2-por-2 pide dos sesiones, y hasta tenerlas no se sube ni peso ni repeticiones.
+
+**El historial es por ejercicio, no por grupo muscular ni por nombre parecido.**
+`getExerciseHistory()` filtra por `exercise_id`, así que dos variantes distintas del
+mismo movimiento (press con barra y press con mancuernas, por ejemplo) son filas
+distintas del catálogo y no comparten historial. Cambiar un ejercicio por otro durante
+la sesión tampoco arrastra el historial del anterior: el ejercicio nuevo arranca sin
+historial, que es lo correcto.
 
 Objetivo por defecto: 10 repeticiones. Cuando el editor de rutinas permita fijar
 `target_reps`, ese valor manda.
@@ -81,6 +103,11 @@ No hay pruebas automatizadas para `progression.ts`: `apps/mobile/package.json` n
 un test runner. La verificación de los casos límite —que se mire la última serie y no la
 primera, que una sola sesión buena no dispare la subida, el tope del 10 % en cargas
 ligeras y el piso de 0.5 kg— es manual.
+
+Los casos de la primera sesión (sin historial devuelve `suggestedWeightKg: null`; con una
+sola sesión devuelve el mismo peso y nunca `add-reps` ni `add-weight`; con dos sesiones la
+escalera sigue funcionando igual que antes) se verificaron ejecutando el módulo real
+contra casos construidos a mano, comparando además la salida con la versión anterior.
 
 ## Fuentes
 

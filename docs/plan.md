@@ -481,6 +481,32 @@ Siguen abiertas:
 - Distribución, participación de entrenadores, cantidad de usuarios y fecha
   objetivo. El plan no depende de ninguna.
 
+### [20] Da de alta socios sin el dashboard de Supabase
+
+**Pedido directo del dueño**, fuera del orden de la fila (regla 2 de `AGENTS.md`).
+Decisión ya tomada: el registro queda **cerrado**. Nadie se crea una cuenta solo; las
+altas las hace el dueño, una por una.
+
+- **Objetivo:** que el dueño cree cuentas de socios sin entrar al dashboard de Supabase
+  y sin que la service_role key toque la app móvil, entregando una contraseña temporal
+  que comparte él directo (WhatsApp o en persona), no por correo: así el alta no depende
+  de que el email llegue ni de que el socio lo revise.
+- **Toca:** un script suelto **fuera de `apps/mobile/`** (`scripts/`, raíz del
+  monorepo); `features/auth/screens/AuthScreen.tsx` (sacar "Crear cuenta", dejar solo
+  iniciar sesión); un documento corto de uso.
+- **No toca:** las políticas RLS (ya aíslan bien por usuario), el esquema de datos, ni
+  el resto de las features.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; correr el script con un correo
+  nuevo crea la cuenta ya activa y muestra la contraseña temporal en consola; con esa
+  contraseña se puede iniciar sesión desde la app; la app ya no ofrece "Crear cuenta";
+  correrlo dos veces con el mismo correo da un error claro, sin duplicar ni romper nada.
+- **Depende de:** nada.
+- **Esfuerzo:** S.
+- **Riesgo:** que la service_role key termine en el repo o dentro del bundle de la app.
+  Esa clave se salta TODAS las políticas RLS: filtrada, cualquiera lee y escribe los
+  datos de cualquier socio. El script y el archivo de entorno que la contenga quedan
+  fuera de todo lo que se commitea y de todo lo que Expo empaqueta.
+
 ## 5. Decisiones que requieren aprobación del dueño
 
 Ninguna. No hay evidencia que justifique un cambio grande de arquitectura, stack o

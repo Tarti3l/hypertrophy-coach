@@ -69,6 +69,8 @@ export type Food = {
   source: string;
   preparation: FoodPreparation;
   tpcaCode: string | null;
+  /** true para los platos preparados de la TPCA; false para los alimentos simples. */
+  isPreparation: boolean;
   portions: FoodPortion[];
 };
 

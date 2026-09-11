@@ -19,7 +19,7 @@ empiece una sesión lo lee primero.
 | [T2] CI mínimo | hecho | #11 | Corre typecheck en cada PR. No bloquea el merge: los rulesets no se aplican en repos privados del plan gratuito |
 | [12] Rango de series efectivas y aviso de subir peso | hecho | #12 | 8-12 fijo, 3 series efectivas, aviso una vez por ejercicio. Migraciones 00021 y 00022 |
 | [19] Partir la pantalla de entrenamiento en dos modos | en revisión | #14 | Los tres puntos de la revisión en el teléfono, más el bloqueo de ejercicio duplicado (constructor y "Cambiar por otro") y el campo de nombre de rutina vacío, están implementados y verificados en Expo Web. Falta la verificación en el teléfono del dueño del repo. Un hallazgo queda abierto sin corregir, no bloquea el merge: sospecha de carrera en el borrador del [3] solo bajo Fast Refresh reiterado (ver "Hallazgos que cambian el plan") |
-| [13] Resolver la primera sesión sin historial | pendiente | | Punto de abandono más probable de la app |
+| [13] Resolver la primera sesión sin historial | hecho | #30 | Sin historial la sugerencia sigue sin dar número (`suggestedWeightKg: null`) y ahora dice qué hacer: empezar liviano para aprender el movimiento. Nuevo caso `first-reference`: con **una sola** sesión registrada se devuelve ese mismo peso para revisarlo, en vez de escalar. Antes, una única sesión exploratoria que llegaba al objetivo disparaba "Prueba una repetición más" — verificado ejecutando la versión anterior y la nueva sobre el mismo caso. La escalera de 2+ sesiones no cambió (2-por-2, add-reps y repeat verificados: 7 ramas contra el módulo real). El historial ya era por `exercise_id`, así que dos variantes no se mezclan; documentado en `docs/progression.md`. `pnpm typecheck` verde. Verificado en vivo (Expo Web) el caso sin historial: en la sesión de Empuje, tres ejercicios sin historial previo (press de pecho en máquina, press inclinado con mancuernas, press de hombro en máquina) muestran "SIN REGISTRO PREVIO · PUNTO DE PARTIDA", sin número y con el texto de empezar liviano. **El caso de una sesión previa ("Revisa el peso de prueba") no se probó en vivo**: exige finalizar un entrenamiento real y no se puede borrar después (ver hallazgo). Se cierra igual porque es el mismo bloque de render ya verificado, solo cambia el texto, y `PROGRESSION_LABELS` es un `Record` completo por `ProgressionKind` — una etiqueta faltante no compila |
 | [14] Entrenar entero sin conexión | pendiente | | El más grande (M) |
 | [15] Cerrar la sincronización de sesiones offline | pendiente | | |
 | [6] Convertir la ruta inicial en «Hoy» | pendiente | | M: cinco módulos |
@@ -293,6 +293,18 @@ entrada con fecha y de qué item salió.
   `searchFoods()` en 25 resultados alfabéticos) quedó corregido: el buscador
   ahora ordena por relevancia en vez de solo alfabético (PR #26,
   `fix(nutrition): ordenar el buscador de alimentos por relevancia`).
+
+- **2026-09-11, item [13]:** un entrenamiento finalizado **no se puede borrar** desde la
+  app, y es el único dato de la app que no se puede. Verificado en el código: hay
+  `.delete()` para rutinas, rutinas compartidas, comidas, atajos de comida y peso
+  corporal; `workouts` y `workout_sets` no tienen ninguno, y tampoco hay pantalla que lo
+  ofrezca. Apareció al verificar el [13]: probar en vivo el caso de "una sesión previa"
+  obliga a finalizar un entrenamiento de prueba que después queda para siempre en la
+  cuenta, así que ese caso quedó sin verificar en vivo. No es solo un problema de
+  pruebas: un socio que toca "Finalizar" por error se queda con una sesión falsa en su
+  historial, y esa sesión además **alimenta la sugerencia de progresión** y el conteo
+  semanal. Vale un item propio (borrar o descartar una sesión), y conviene resolverlo
+  antes del [11], que cierra la tanda verificando el recorrido completo.
 
 ## Preguntas abiertas
 

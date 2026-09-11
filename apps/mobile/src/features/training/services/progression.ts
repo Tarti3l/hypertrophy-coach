@@ -1,6 +1,11 @@
 /**
  * Sugerencia de sobrecarga progresiva. Fuentes en docs/progression.md.
  *
+ * Sin historial NO se sugiere ningún peso: no hay forma de saberlo y un número inventado
+ * es peor que ninguno. Con UNA sola sesión tampoco se sube nada — ese peso se eligió a
+ * ojo para aprender el movimiento, así que se devuelve tal cual para revisarlo. Recién
+ * con dos sesiones empieza a correr la escalera de abajo.
+ *
  * Regla 2-por-2 (NSCA): si en la ÚLTIMA SERIE de las DOS últimas sesiones de un
  * ejercicio se hicieron 2 repeticiones o más por encima del objetivo, toca subir peso.
  *
@@ -27,7 +32,7 @@ export type SessionSummary = {
   sets: { setNumber: number; weightKg: number; completedReps: number }[];
 };
 
-export type ProgressionKind = 'first-time' | 'repeat' | 'add-reps' | 'add-weight';
+export type ProgressionKind = 'first-time' | 'first-reference' | 'repeat' | 'add-reps' | 'add-weight';
 
 export type ProgressionSuggestion = {
   kind: ProgressionKind;
@@ -53,7 +58,7 @@ export function suggestProgression(
       kind: 'first-time',
       suggestedWeightKg: null,
       suggestedReps: targetReps,
-      message: `Primera vez con este ejercicio. Empieza con un peso que puedas mover ${targetReps} veces con buena técnica.`
+      message: `Primera vez con este ejercicio: hoy toca aprender el movimiento, no buscar tu máximo. Empieza liviano, con un peso que te sobre para ${targetReps} repeticiones, y anota el que hayas usado.`
     };
   }
 
@@ -66,6 +71,19 @@ export function suggestProgression(
       suggestedWeightKg: null,
       suggestedReps: targetReps,
       message: 'Repite el peso de la última vez y apunta a completar todas las series.'
+    };
+  }
+
+  // Una sola sesión es una carga de prueba, no una carga validada: se eligió a ojo para
+  // aprender el movimiento. Se devuelve tal cual para revisarla, sin subir nada — haber
+  // completado la primera vez no es evidencia de que el peso quedó corto. La regla
+  // 2-por-2 necesita dos sesiones y acá todavía hay una.
+  if (history.length === 1) {
+    return {
+      kind: 'first-reference',
+      suggestedWeightKg: lastTopSet.weightKg,
+      suggestedReps: targetReps,
+      message: `La primera vez usaste ${formatKg(lastTopSet.weightKg)} y te salieron ${lastTopSet.completedReps} repeticiones. Era para probar: repite ese peso y fíjate si se te queda corto o justo.`
     };
   }
 

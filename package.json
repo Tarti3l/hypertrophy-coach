@@ -11,7 +11,8 @@
     "typecheck": "pnpm --filter @hypertrophy/mobile typecheck",
     "db:push": "npx supabase db push",
     "db:status": "npx supabase migration list",
-    "media:check": "node scripts/check-exercise-media.mjs"
+    "media:check": "node scripts/check-exercise-media.mjs",
+    "invite-member": "node scripts/invite-member.mjs"
   },
   "devDependencies": {
     "xlsx": "0.18.5"

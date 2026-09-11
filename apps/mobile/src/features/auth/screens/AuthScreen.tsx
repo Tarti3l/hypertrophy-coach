@@ -7,21 +7,20 @@ import { palette, spacing, ThemeColors, type, typography } from '@/theme/tokens'
 
 import { useAuth } from '../AuthProvider';
 
-type AuthMode = 'login' | 'register';
-
+/**
+ * Solo inicio de sesión. El registro es cerrado por decisión del dueño: las cuentas las
+ * crea él con scripts/invite-member.mjs y entrega la contraseña en mano. Si alguna vez
+ * vuelve el alta desde la app, tiene que volver también esa decisión, no solo el botón.
+ */
 export function AuthScreen() {
   const colorScheme = useColorScheme();
   const colors = palette[colorScheme === 'dark' ? 'dark' : 'light'];
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { configurationError } = useAuth();
-  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-
-  const isRegistering = mode === 'register';
 
   async function submit() {
     const normalizedEmail = email.trim().toLowerCase();
@@ -35,19 +34,12 @@ export function AuthScreen() {
     }
 
     setError(null);
-    setMessage(null);
     setIsSubmitting(true);
 
     try {
       const client = requireSupabase();
-      if (isRegistering) {
-        const { data, error: signUpError } = await client.auth.signUp({ email: normalizedEmail, password });
-        if (signUpError) throw signUpError;
-        if (!data.session) setMessage('Revisa tu correo para confirmar la cuenta y luego inicia sesión.');
-      } else {
-        const { error: signInError } = await client.auth.signInWithPassword({ email: normalizedEmail, password });
-        if (signInError) throw signInError;
-      }
+      const { error: signInError } = await client.auth.signInWithPassword({ email: normalizedEmail, password });
+      if (signInError) throw signInError;
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'No pudimos conectar con Supabase. Inténtalo otra vez.');
     } finally {
@@ -60,8 +52,8 @@ export function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.intro}>
-            <Text style={styles.title}>{isRegistering ? 'Empecemos con calma' : 'Tu siguiente sesión empieza aquí'}</Text>
-            <Text style={styles.description}>{isRegistering ? 'Crea una cuenta para guardar tus metas, entrenamientos y progreso.' : 'Inicia sesión para continuar con tu plan.'}</Text>
+            <Text style={styles.title}>Tu siguiente sesión empieza aquí</Text>
+            <Text style={styles.description}>Inicia sesión para continuar con tu plan.</Text>
           </View>
 
           <View style={styles.form}>
@@ -82,19 +74,18 @@ export function AuthScreen() {
             <TextInput
               accessibilityLabel="Contraseña"
               autoCapitalize="none"
-              autoComplete={isRegistering ? 'new-password' : 'password'}
+              autoComplete="password"
               onChangeText={setPassword}
               placeholder="Mínimo 6 caracteres"
               placeholderTextColor={colors.textMuted}
               secureTextEntry
-              textContentType={isRegistering ? 'newPassword' : 'password'}
+              textContentType="password"
               value={password}
               style={styles.input}
             />
 
             {configurationError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{configurationError}</Text> : null}
             {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
-            {message ? <Text accessibilityLiveRegion="polite" style={styles.message}>{message}</Text> : null}
 
             <Pressable
               accessibilityRole="button"
@@ -103,12 +94,12 @@ export function AuthScreen() {
               onPress={() => void submit()}
               style={({ pressed }) => [styles.primaryButton, (isSubmitting || configurationError) && styles.primaryButtonDisabled, pressed && styles.pressed]}
             >
-              {isSubmitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.primaryButtonText}>{isRegistering ? 'Crear cuenta' : 'Iniciar sesión'}</Text>}
+              {isSubmitting ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.primaryButtonText}>Iniciar sesión</Text>}
             </Pressable>
 
-            <Pressable accessibilityRole="button" disabled={isSubmitting} onPress={() => { setMode(isRegistering ? 'login' : 'register'); setError(null); setMessage(null); }} style={styles.switchButton}>
-              <Text style={styles.switchText}>{isRegistering ? 'Ya tengo una cuenta' : 'Quiero crear una cuenta'}</Text>
-            </Pressable>
+            <Text style={styles.note}>
+              ¿No tienes cuenta todavía? Pídesela al encargado del gimnasio: él te crea el acceso y te pasa tu contraseña.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -143,10 +134,8 @@ function createStyles(colors: ThemeColors) {
     primaryButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 14, justifyContent: 'center', marginTop: spacing.xl, minHeight: 52 },
     primaryButtonDisabled: { opacity: 0.56 },
     primaryButtonText: { color: colors.surface, fontFamily: typography.body, fontSize: 16, fontWeight: '700' },
-    switchButton: { alignSelf: 'center', justifyContent: 'center', minHeight: 44, marginTop: spacing.sm, paddingHorizontal: spacing.md },
-    switchText: { color: colors.accent, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },
+    note: { color: colors.textMuted, fontFamily: typography.body, fontSize: 13, lineHeight: 19, marginTop: spacing.lg, textAlign: 'center' },
     error: { color: colors.danger, fontFamily: typography.body, fontSize: 13, lineHeight: 19, marginTop: spacing.md },
-    message: { color: colors.accent, fontFamily: typography.body, fontSize: 13, lineHeight: 19, marginTop: spacing.md },
     pressed: { opacity: 0.78 },
     loadingScreen: { alignItems: 'center', backgroundColor: colors.background, flex: 1, gap: spacing.md, justifyContent: 'center' },
     loadingText: { color: colors.textMuted, fontFamily: typography.body, fontSize: 15 }

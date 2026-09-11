@@ -1,6 +1,7 @@
 import { requireSupabase } from '@/lib/supabase';
 
 import { Food, FoodPortion, FoodPreparation } from '../types/nutrition';
+import { rankFoodsByRelevance } from './foodSearchRanking';
 
 type PortionRow = { id: string; label: string; grams: number; is_default: boolean; sort_order: number };
 type FoodRow = {
@@ -15,16 +16,29 @@ type FoodRow = {
   source: string;
   preparation: FoodPreparation;
   tpca_code: string | null;
+  is_preparation: boolean;
   food_portions: PortionRow[] | null;
 };
 
 const SELECT =
-  'id, slug, name, category, energy_kcal, protein_g, carbs_g, fat_g, source, preparation, tpca_code, food_portions(id, label, grams, is_default, sort_order)';
+  'id, slug, name, category, energy_kcal, protein_g, carbs_g, fat_g, source, preparation, tpca_code, is_preparation, food_portions(id, label, grams, is_default, sort_order)';
+
+/**
+ * Cuántas filas se traen para ordenar por relevancia antes de recortar a las que se
+ * muestran. Hay términos con cientos de coincidencias ("arroz" tiene 317), así que
+ * ordenar solo las 25 que se muestran no alcanza: el alimento correcto puede no estar
+ * entre ellas. El orden del `select` (primero los simples, después los preparados)
+ * garantiza que los alimentos simples entren siempre en este lote.
+ */
+const CANDIDATE_LIMIT = 100;
 
 /**
  * Búsqueda por nombre. RLS ya limita a los alimentos publicados; is_default_variant
  * limita además a una sola fila por tpca_code cuando hay varias preparaciones por
  * estrato socioeconómico (ver comentario en supabase/migrations/00023).
+ *
+ * El resultado se ordena por relevancia, no por nombre: ver foodSearchRanking.ts para
+ * por qué el alfabético dejaba el arroz fuera de la búsqueda de "arroz".
  */
 export async function searchFoods(term: string, limit = 25): Promise<Food[]> {
   const client = requireSupabase();
@@ -35,14 +49,20 @@ export async function searchFoods(term: string, limit = 25): Promise<Food[]> {
     .select(SELECT)
     .eq('is_published', true)
     .eq('is_default_variant', true)
+    // Los alimentos simples antes que los platos preparados: quien escribe "arroz"
+    // busca el ingrediente, no los 310 guisos que lo llevan de acompañamiento.
+    .order('is_preparation')
     .order('name')
-    .limit(limit);
+    .limit(trimmed.length > 0 ? CANDIDATE_LIMIT : limit);
   if (trimmed.length > 0) query = query.ilike('name', `%${trimmed}%`);
 
   const { data, error } = await query;
   if (error) throw error;
 
-  return ((data ?? []) as unknown as FoodRow[]).map(toFood);
+  const foods = ((data ?? []) as unknown as FoodRow[]).map(toFood);
+  if (trimmed.length === 0) return foods;
+
+  return rankFoodsByRelevance(foods, trimmed).slice(0, limit);
 }
 
 /**
@@ -87,6 +107,7 @@ function toFood(row: FoodRow): Food {
     source: row.source,
     preparation: row.preparation,
     tpcaCode: row.tpca_code,
+    isPreparation: row.is_preparation,
     portions
   };
 }

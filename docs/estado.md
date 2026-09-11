@@ -261,6 +261,32 @@ entrada con fecha y de qué item salió.
   coincidencias alfabéticas, y choca con la prioridad uno de "fácil y
   sencilla de usar". Vale la pena un item de búsqueda por relevancia (no
   solo alfabética) antes de abrir el catálogo completo a los usuarios.
+  **Corregido en el PR #26**, pero la causa supuesta acá no era la de fondo:
+  ver la entrada siguiente.
+
+- **2026-09-11, buscador de alimentos (pedido del dueño, PR #26):** subir el
+  límite de 25 no habría arreglado nada. El problema no es cuántas filas se
+  muestran sino que el orden era alfabético sobre un catálogo que mezcla los
+  1103 platos preparados con los alimentos simples: de las 317 coincidencias
+  de "arroz", **310 son platos** que solo lo llevan de acompañamiento ("Adobo
+  de cerdo con arroz"), y el ingrediente caía recién en la posición 42. Con
+  cualquier límite razonable, el socio veía guisos. Corregido ordenando por
+  relevancia (`services/foodSearchRanking.ts`): primero los alimentos simples
+  y después los platos, y dentro de cada grupo, nombre exacto → empieza con el
+  término → alguna palabra empieza con el término → lo contiene. Verificado
+  contra la base remota: "Arroz pilado o pulido cocido" pasa de no aparecer a
+  salir 3.º con su cód. A2. Mejora igual "pollo" (antes cinco guisos, ahora
+  cortes de pollo), "leche" (antes alfajores, ahora leches) y "pan" (antes
+  "Ají panca", que coincidía a mitad de palabra).
+
+- **2026-09-11, buscador de alimentos (hallazgo nuevo, SIN corregir):** buscar
+  sin tildes no encuentra nada. "platano" devuelve 0 resultados porque el
+  filtro `ilike` de Postgres no ignora las tildes y la tabla dice "Plátano";
+  lo mismo con "mais", "cafe", "atun", "limon". Afecta a alimentos muy comunes
+  y choca con la prioridad uno (fácil y sencilla). No se corrigió acá porque
+  la solución razonable es de base de datos (extensión `unaccent` + índice, o
+  una columna normalizada), no de cliente: necesita migración y que el dueño
+  la aplique. Vale un item propio.
 
 ## Preguntas abiertas
 

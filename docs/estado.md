@@ -27,7 +27,7 @@ empiece una sesión lo lee primero.
 | [8] Prellenar la siguiente serie | pendiente | | |
 | [9] Mostrar la próxima serie durante el descanso | pendiente | | Reemplaza la presentación que preveía el antiguo [9] |
 | [10] Mostrar un único resumen de descanso | pendiente | | |
-| [16] Reemplazar el catálogo por la TPCA 2023 | en revisión | #22 | Esquema, migración (sin aplicar al remoto) y UI mínima listos, `pnpm typecheck` verde. Falta que el dueño del repo corra `pnpm db:push` y verifique en vivo (pill, "no especificada", ambas variantes de "arroz") |
+| [16] Reemplazar el catálogo por la TPCA 2023 | en revisión | #22 | Migración 00023 aplicada al remoto (`pnpm db:status`: 00001-00023 sincronizadas local/remoto). Verificado en vivo (Expo Web): el pill "PREPARACIÓN NO ESPECIFICADA" aparece en "Arroz blanco corriente" (cód. A3), y buscando "arroz pilado" aparece "Arroz pilado o pulido cocido" (cód. A2) con pill "COCIDO" — ambas variantes distintas, sin colisión de nombre. Ciclo completo probado: elegir → confirmar 150 g (1 taza) → 173 kcal calculados correctamente → aparece en "Registros de hoy" con fuente "TPCA 2023 (INS/CENAN), cód. A2" → totales del día se actualizan → quitar funciona. Sin errores de consola. **Hallazgo nuevo, ver más abajo: buscar "arroz" a secas no encuentra "Arroz pilado o pulido cocido".** Falta la verificación del dueño del repo en su propio dispositivo. |
 | [17] Incorporar porciones medidas | bloqueado | | **Bloqueado por el dueño**: hay que pesar porciones reales con balanza. Ningún agente puede producir ese dato |
 | [18] Seguimiento de peso corporal | pendiente | | |
 | [11] Verificar el recorrido integrado en web y en iPhone | pendiente | | Cierra la tanda |
@@ -246,6 +246,21 @@ entrada con fecha y de qué item salió.
   regla en vez de cada una con su copia. Reverificado: los mismos ejercicios
   que antes se duplicaban ahora aparecen atenuados con "Ya está en tu rutina
   de hoy" y no se pueden elegir.
+
+- **2026-09-11, item [16]:** buscar "arroz" a secas en el registro de
+  comidas no encuentra "Arroz pilado o pulido cocido" (cód. A2). Causa:
+  `searchFoods()` ordena por `name` alfabético y corta en `limit=25`, y hay
+  más de 25 alimentos cuyo nombre empieza con o contiene "arroz" antes de
+  llegar alfabéticamente a esa fila (la fila 25 es "Arroz chaufa con pollo
+  chijaukay"). Confirmado que el alimento existe y funciona bien: buscando el
+  término más específico "arroz pilado" aparece solo, con el pill "COCIDO"
+  correcto, los macros correctos y la fuente "TPCA 2023 (INS/CENAN), cód.
+  A2". No es un defecto de la migración ni del catálogo, y no bloquea el
+  [16] — el alimento se puede registrar con el término correcto — pero sí
+  afecta a cualquier alimento cuyo nombre quede fuera de las primeras 25
+  coincidencias alfabéticas, y choca con la prioridad uno de "fácil y
+  sencilla de usar". Vale la pena un item de búsqueda por relevancia (no
+  solo alfabética) antes de abrir el catálogo completo a los usuarios.
 
 ## Preguntas abiertas
 

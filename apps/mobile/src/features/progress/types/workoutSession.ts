@@ -70,3 +70,12 @@ export type PendingWorkoutPayload = {
 };
 
 export type SaveFailureKind = 'network' | 'auth' | 'validation';
+
+/** Una sesión terminada, con lo justo para reconocerla en una lista y poder borrarla. */
+export type CompletedWorkoutSummary = {
+  id: string;
+  endedAt: string;
+  durationMinutes: number | null;
+  setCount: number;
+  exerciseCount: number;
+};

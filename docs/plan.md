@@ -507,6 +507,37 @@ altas las hace el dueño, una por una.
   datos de cualquier socio. El script y el archivo de entorno que la contenga quedan
   fuera de todo lo que se commitea y de todo lo que Expo empaqueta.
 
+### [21] Permite eliminar un entrenamiento ya finalizado
+
+**Sale de un hallazgo del [13]**, no de la planificación original: un entrenamiento
+finalizado es el único dato de la app que no se puede borrar. Comidas, peso, atajos,
+rutinas y rutinas compartidas tienen su "Quitar"; `workouts` no tenía ninguno. Eso
+dejó sin verificar en vivo un caso del [13] (el de "una sola sesión previa"), porque
+probarlo obligaba a dejar un entrenamiento de prueba permanente en una cuenta real.
+
+Es una **utilidad**, no una cuarta sección: no entra en entrenamiento, descanso ni
+alimentación como funcionalidad nueva, solo repara una asimetría.
+
+- **Objetivo:** poder eliminar un entrenamiento ya finalizado, para poder verificar
+  recorridos en vivo sin dejar datos de prueba permanentes en una cuenta real, y para
+  que un socio que toca "Finalizar" por error no arrastre una sesión falsa para siempre.
+- **Toca:** `features/progress/` (el repositorio que ya consulta `workouts` y
+  `workout_sets`, y la pantalla de Progreso como punto de acceso).
+- **No toca:** el registro de series durante una sesión activa, el cálculo de progreso
+  salvo por dejar de contar lo borrado, ni otras tablas.
+- **Criterio de aceptación:** `pnpm typecheck` pasa; se puede eliminar un entrenamiento
+  completado desde el historial, pidiendo confirmación explícita antes de borrar; al
+  eliminarlo, sus `workout_sets` se borran y dejan de contarse en el progreso y en las
+  sugerencias de "anterior" y "punto de partida"; recargar confirma que no vuelve a
+  aparecer; **no se puede borrar con un solo toque**.
+- **Depende de:** nada. El esquema ya lo permite: la política RLS de `workouts` es
+  `for all` (el dueño de la fila ya puede borrarla) y `workout_sets.workout_id` tiene
+  `on delete cascade`. No hace falta migración.
+- **Esfuerzo:** S.
+- **Riesgo:** borrar sin confirmar y perderle datos reales a un socio, o dejar series
+  huérfanas. La cascada cubre lo segundo; lo primero se cubre con confirmación en dos
+  pasos, nunca con un toque suelto.
+
 ## 5. Decisiones que requieren aprobación del dueño
 
 Ninguna. No hay evidencia que justifique un cambio grande de arquitectura, stack o

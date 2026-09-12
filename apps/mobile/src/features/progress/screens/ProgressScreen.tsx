@@ -7,10 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useExerciseCatalog } from '@/features/training/hooks/useExerciseCatalog';
 import { Eyebrow } from '@/components/ui/Eyebrow';
-import { palette, spacing, ThemeColors, type, typography } from '@/theme/tokens';
+import { palette, radii, spacing, ThemeColors, type, typography } from '@/theme/tokens';
 
-import { getStrengthProgress } from '../services/workoutSessionRepository';
-import { StrengthPoint } from '../types/workoutSession';
+import { deleteCompletedWorkout, getCompletedWorkouts, getStrengthProgress } from '../services/workoutSessionRepository';
+import { CompletedWorkoutSummary, StrengthPoint } from '../types/workoutSession';
 
 export function ProgressScreen() {
   const router = useRouter();
@@ -27,6 +27,13 @@ export function ProgressScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
+
+  const [sessions, setSessions] = useState<CompletedWorkoutSummary[]>([]);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  // Borrar pide dos toques a propósito: el id que está esperando confirmación.
+  // Alert.alert no funciona en la versión web, así que se pregunta en línea.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => () => { isMountedRef.current = false; }, []);
 
@@ -54,6 +61,36 @@ export function ProgressScreen() {
     if (!exerciseId) return;
     void loadProgress(exerciseId);
   }, [exerciseId, loadProgress]);
+
+  const loadSessions = useCallback(async () => {
+    try {
+      const recent = await getCompletedWorkouts();
+      if (!isMountedRef.current) return;
+      setSessions(recent);
+      setSessionsError(null);
+    } catch {
+      if (isMountedRef.current) setSessionsError('No pudimos cargar tus sesiones. Revisa tu conexión e inténtalo de nuevo.');
+    }
+  }, []);
+
+  useEffect(() => { void loadSessions(); }, [loadSessions]);
+
+  const removeSession = useCallback(async (workoutId: string) => {
+    setDeletingId(workoutId);
+    try {
+      await deleteCompletedWorkout(workoutId);
+      if (!isMountedRef.current) return;
+      setConfirmingId(null);
+      await loadSessions();
+      // El gráfico sale de las series que acabamos de borrar: recargarlo o quedaría
+      // mostrando una sesión que ya no existe.
+      if (exerciseId) await loadProgress(exerciseId);
+    } catch {
+      if (isMountedRef.current) setSessionsError('No pudimos eliminar esa sesión. Revisa tu conexión e inténtalo de nuevo.');
+    } finally {
+      if (isMountedRef.current) setDeletingId(null);
+    }
+  }, [exerciseId, loadProgress, loadSessions]);
 
   const selectedExercise = catalog.exercises.find((exercise) => exercise.id === exerciseId) ?? null;
   const isBusy = catalog.isLoading || (Boolean(exerciseId) && isLoading);
@@ -143,9 +180,80 @@ export function ProgressScreen() {
             </Text>
           </View>
         )}
+
+        <View style={styles.sessionsSection}>
+          <Eyebrow>Tus sesiones</Eyebrow>
+          <Text style={styles.sessionsHint}>
+            Si finalizaste un entrenamiento por error, puedes eliminarlo. Sus series dejan de contar en tu progreso.
+          </Text>
+
+          {sessionsError ? (
+            <View accessibilityLiveRegion="polite" style={styles.banner}>
+              <Text style={styles.bannerText}>{sessionsError}</Text>
+              <Pressable accessibilityRole="button" onPress={() => void loadSessions()} style={styles.textButton}>
+                <Text style={styles.textButtonText}>Reintentar</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {sessions.length === 0 && !sessionsError ? (
+            <Text style={styles.sessionsHint}>Todavía no terminaste ningún entrenamiento.</Text>
+          ) : null}
+
+          {sessions.map((session) => (
+            <View key={session.id} style={styles.sessionRow}>
+              <Text style={styles.sessionDate}>{formatSessionDate(session.endedAt)}</Text>
+              <Text style={styles.sessionMeta}>{describeSession(session)}</Text>
+
+              {deletingId === session.id ? (
+                <ActivityIndicator accessibilityLabel="Eliminando la sesión" color={colors.accent} style={styles.sessionBusy} />
+              ) : confirmingId === session.id ? (
+                <View style={styles.sessionActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Confirmar que se elimina la sesión del ${formatSessionDate(session.endedAt)}`}
+                    onPress={() => void removeSession(session.id)}
+                    style={({ pressed }) => [styles.dangerButton, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.dangerButtonText}>Sí, eliminar</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" onPress={() => setConfirmingId(null)} style={styles.secondaryButton}>
+                    <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar la sesión del ${formatSessionDate(session.endedAt)}`}
+                  onPress={() => setConfirmingId(session.id)}
+                  style={styles.secondaryButton}
+                >
+                  <Text style={styles.secondaryButtonText}>Eliminar</Text>
+                </Pressable>
+              )}
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function formatSessionDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${date.getFullYear()} · ${hours}:${minutes}`;
+}
+
+function describeSession(session: CompletedWorkoutSummary): string {
+  const sets = session.setCount === 1 ? '1 serie' : `${session.setCount} series`;
+  const exercises = session.exerciseCount === 1 ? '1 ejercicio' : `${session.exerciseCount} ejercicios`;
+  const parts = [sets, exercises];
+  if (session.durationMinutes !== null) parts.push(`${session.durationMinutes} min`);
+  return parts.join(' · ');
 }
 
 function createStyles(colors: ThemeColors) {
@@ -169,6 +277,17 @@ function createStyles(colors: ThemeColors) {
     textButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, marginTop: spacing.xs },
     textButtonText: { color: colors.accent, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },
     note: { backgroundColor: colors.accentSoft, borderRadius: 14, marginTop: spacing.lg, padding: spacing.md },
+    sessionsSection: { borderColor: colors.line, borderTopWidth: 1, marginTop: spacing.xl, paddingTop: spacing.lg },
+    sessionsHint: { ...type.small, color: colors.textMuted, marginTop: spacing.sm },
+    sessionRow: { borderColor: colors.line, borderTopWidth: 1, gap: spacing.xs, marginTop: spacing.md, paddingTop: spacing.md },
+    sessionDate: { color: colors.text, fontFamily: typography.body, fontSize: 15, fontWeight: '600' },
+    sessionMeta: { color: colors.textMuted, fontFamily: typography.body, fontSize: 13, lineHeight: 19 },
+    sessionActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+    sessionBusy: { alignSelf: 'flex-start', marginTop: spacing.sm },
+    dangerButton: { alignItems: 'center', backgroundColor: colors.danger, borderRadius: radii.sm, justifyContent: 'center', minHeight: 44, paddingHorizontal: spacing.lg },
+    dangerButtonText: { color: colors.surface, fontFamily: typography.body, fontSize: 15, fontWeight: '700' },
+    secondaryButton: { alignItems: 'center', alignSelf: 'flex-start', borderColor: colors.line, borderRadius: radii.sm, borderWidth: 1, justifyContent: 'center', minHeight: 44, marginTop: spacing.xs, paddingHorizontal: spacing.lg },
+    secondaryButtonText: { color: colors.text, fontFamily: typography.body, fontSize: 15, fontWeight: '600' },
     noteText: { color: colors.text, fontFamily: typography.body, fontSize: 14, lineHeight: 21 },
     pressed: { opacity: 0.78 }
   });

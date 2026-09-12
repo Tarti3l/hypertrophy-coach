@@ -1,7 +1,7 @@
 import { requireSupabase } from '@/lib/supabase';
 import { selectWithOptionalColumns } from '@/lib/resilientSelect';
 
-import { CompletedWorkoutDraft, SaveFailureKind, SavedWorkout, StrengthPoint } from '../types/workoutSession';
+import { CompletedWorkoutDraft, CompletedWorkoutSummary, SaveFailureKind, SavedWorkout, StrengthPoint } from '../types/workoutSession';
 
 /** Ventana suficiente para calcular racha y calendario sin traer todo el historial. */
 const HISTORY_WINDOW_DAYS = 120;
@@ -70,6 +70,56 @@ export async function getCompletedWorkoutDates(): Promise<string[]> {
 
   const rows = (data ?? []) as { ended_at: string }[];
   return [...new Set(rows.map((row) => localDateKey(new Date(row.ended_at))))];
+}
+
+type CompletedWorkoutRow = {
+  id: string;
+  ended_at: string | null;
+  duration_minutes: number | null;
+  workout_sets: { exercise_id: string }[] | null;
+};
+
+/** Las sesiones terminadas más recientes, para poder revisarlas y borrar la que no va. */
+export async function getCompletedWorkouts(limit = 20): Promise<CompletedWorkoutSummary[]> {
+  const client = requireSupabase();
+
+  const { data, error } = await client
+    .from('workouts')
+    .select('id, ended_at, duration_minutes, workout_sets(exercise_id)')
+    .eq('status', 'completed')
+    .not('ended_at', 'is', null)
+    .order('ended_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return ((data ?? []) as unknown as CompletedWorkoutRow[])
+    .filter((row): row is CompletedWorkoutRow & { ended_at: string } => row.ended_at !== null)
+    .map((row) => {
+      const sets = row.workout_sets ?? [];
+      return {
+        id: row.id,
+        endedAt: row.ended_at,
+        durationMinutes: row.duration_minutes,
+        setCount: sets.length,
+        exerciseCount: new Set(sets.map((set) => set.exercise_id)).size
+      };
+    });
+}
+
+/**
+ * Borra una sesión terminada. Las series se van con ella: workout_sets.workout_id tiene
+ * `on delete cascade`, así que no hace falta borrarlas aparte ni quedan huérfanas. Y como
+ * todo lo que calcula progreso y sugerencias lee de esas mismas filas, dejan de contarse
+ * solas — no hay ningún total guardado aparte que haya que corregir.
+ *
+ * RLS (`users manage their workouts`, política `for all`) limita el borrado a las
+ * sesiones propias: pasar el id de otra persona no borra nada.
+ */
+export async function deleteCompletedWorkout(workoutId: string): Promise<void> {
+  const client = requireSupabase();
+  const { error } = await client.from('workouts').delete().eq('id', workoutId);
+  if (error) throw error;
 }
 
 type StrengthRow = {
